@@ -111,4 +111,8 @@ Register as a Customer to browse and order or as a Shopkeeper to securely access
 ---
 
 ## Team
-Aditya Samadhiya — Solo Project
+Aditya Samadhiya
+Anant Pratap Singh
+Abhishek Tripathi
+Yash Raj
+Yash Yadav

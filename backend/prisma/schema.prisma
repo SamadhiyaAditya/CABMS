@@ -1,0 +1,204 @@
+// ☕ CAMS — Chai Adda Management System
+// Prisma Schema — Source of Truth for all entities
+// Covers: User, MenuCategory, MenuItem, InventoryItem, Cart, CartItem, Order, OrderItem, Review
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────────
+
+enum Role {
+  CUSTOMER
+  SHOPKEEPER
+}
+
+enum OrderStatus {
+  PENDING
+  READY
+  PICKED_UP
+}
+
+// ─────────────────────────────────────────────
+// USER — Abstract base concept (role-based)
+// OOP: Inheritance modeled via role enum
+// ─────────────────────────────────────────────
+
+model User {
+  id           String   @id @default(uuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         Role
+  createdAt    DateTime @default(now())
+
+  // Relations
+  orders  Order[]
+  reviews Review[]
+  cart    Cart?
+
+  @@map("users")
+}
+
+// ─────────────────────────────────────────────
+// MENU — Composite pattern (Category + Item)
+// ─────────────────────────────────────────────
+
+model MenuCategory {
+  id          String  @id @default(uuid())
+  name        String
+  description String?
+
+  // Composite: category contains items
+  items MenuItem[]
+
+  @@map("menu_categories")
+}
+
+model MenuItem {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  price       Decimal
+  imageUrl    String?
+  isAvailable Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  // FK to category
+  categoryId String
+  category   MenuCategory @relation(fields: [categoryId], references: [id])
+
+  // Relations
+  inventoryItem InventoryItem?
+  cartItems     CartItem[]
+  orderItems    OrderItem[]
+  reviews       Review[]
+
+  @@map("menu_items")
+}
+
+// ─────────────────────────────────────────────
+// INVENTORY — 1:1 with MenuItem
+// Observer pattern: stock changes trigger alerts
+// ─────────────────────────────────────────────
+
+model InventoryItem {
+  id                String   @id @default(uuid())
+  stockCount        Int      @default(0)
+  lowStockThreshold Int      @default(5)
+  updatedAt         DateTime @updatedAt
+
+  // 1:1 with MenuItem
+  menuItemId String   @unique
+  menuItem   MenuItem @relation(fields: [menuItemId], references: [id])
+
+  @@map("inventory_items")
+}
+
+// ─────────────────────────────────────────────
+// CART — One active cart per customer (1:1)
+// ─────────────────────────────────────────────
+
+model Cart {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+
+  // 1:1 with User (customer)
+  customerId String   @unique
+  customer   User     @relation(fields: [customerId], references: [id])
+
+  // Cart contains CartItems
+  items CartItem[]
+
+  @@map("carts")
+}
+
+model CartItem {
+  id       String @id @default(uuid())
+  quantity Int
+
+  // FK to Cart
+  cartId String
+  cart   Cart   @relation(fields: [cartId], references: [id], onDelete: Cascade)
+
+  // FK to MenuItem — Cascade delete when item removed (RISK-08 fix)
+  menuItemId String
+  menuItem   MenuItem @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+
+  // Unique: same item can't be added twice to same cart (update qty instead)
+  @@unique([cartId, menuItemId])
+  @@map("cart_items")
+}
+
+// ─────────────────────────────────────────────
+// ORDER — Core transaction entity
+// Template Method: validate → reserve → create → notify
+// ─────────────────────────────────────────────
+
+model Order {
+  id          String      @id @default(uuid())
+  status      OrderStatus @default(PENDING)
+  totalAmount Decimal
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  // FK to User (customer)
+  customerId String
+  customer   User   @relation(fields: [customerId], references: [id])
+
+  // Order contains OrderItems
+  items   OrderItem[]
+  reviews Review[]
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id          String  @id @default(uuid())
+  quantity    Int
+  priceAtTime Decimal // snapshot of price at order time
+
+  // FK to Order
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  // FK to MenuItem
+  menuItemId String
+  menuItem   MenuItem @relation(fields: [menuItemId], references: [id])
+
+  @@map("order_items")
+}
+
+// ─────────────────────────────────────────────
+// REVIEW — Tied to verified purchase
+// Constraint: one review per item per order (RISK-07 fix)
+// ─────────────────────────────────────────────
+
+model Review {
+  id        String   @id @default(uuid())
+  rating    Int // 1–5
+  comment   String?
+  createdAt DateTime @default(now())
+
+  // FK to User (customer)
+  customerId String
+  customer   User   @relation(fields: [customerId], references: [id])
+
+  // FK to MenuItem
+  menuItemId String
+  menuItem   MenuItem @relation(fields: [menuItemId], references: [id])
+
+  // FK to Order — optional during iteration
+  orderId String?
+  order   Order?  @relation(fields: [orderId], references: [id])
+
+  @@unique([customerId, menuItemId])
+  @@map("reviews")
+}

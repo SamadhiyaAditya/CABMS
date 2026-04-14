@@ -37,11 +37,12 @@ export class SalesReportStrategy implements IReportStrategy {
     orders.forEach((order: any) => {
       totalRevenue += Number(order.totalAmount);
       order.items.forEach((i: any) => {
+        if (!i.menuItem) return; // Skip if item was deleted or missing
         if (!itemSales[i.menuItemId]) {
           itemSales[i.menuItemId] = { name: i.menuItem.name, qtySold: 0, revenue: 0 };
         }
-        itemSales[i.menuItemId].qtySold += i.quantity;
-        itemSales[i.menuItemId].revenue += (i.quantity * Number(i.priceAtTime));
+        itemSales[i.menuItemId].qtySold += (i.quantity || 0);
+        itemSales[i.menuItemId].revenue += ((i.quantity || 0) * Number(i.priceAtTime || 0));
       });
     });
 
@@ -70,20 +71,22 @@ export class InventoryReportStrategy implements IReportStrategy {
     const criticalItems: string[] = [];
 
     const breakdown = inventory.map((inv: any) => {
-      const stockValue = inv.stockCount * Number(inv.menuItem.price);
+      if (!inv.menuItem) return null;
+      const stockValue = (inv.stockCount || 0) * Number(inv.menuItem.price || 0);
       totalValue += stockValue;
 
-      if (inv.stockCount <= inv.lowStockThreshold) {
+      const isCritical = (inv.stockCount || 0) <= (inv.lowStockThreshold || 0);
+      if (isCritical) {
         criticalItems.push(inv.menuItem.name);
       }
 
       return {
         name: inv.menuItem.name,
-        stockRemaining: inv.stockCount,
+        stockRemaining: inv.stockCount || 0,
         capitalValue: stockValue,
-        status: inv.stockCount <= inv.lowStockThreshold ? 'CRITICAL' : 'HEALTHY'
+        status: isCritical ? 'CRITICAL' : 'HEALTHY'
       };
-    });
+    }).filter(Boolean);
 
     return {
       type: 'INVENTORY_VALUATION',
@@ -112,11 +115,12 @@ export class TopItemsStrategy implements IReportStrategy {
     
     orders.forEach((order: any) => {
       order.items.forEach((item: any) => {
+        if (!item.menuItem) return;
         if (!itemCounts[item.menuItemId]) {
           itemCounts[item.menuItemId] = { name: item.menuItem.name, qtySold: 0, revenue: 0 };
         }
-        itemCounts[item.menuItemId].qtySold += item.quantity;
-        itemCounts[item.menuItemId].revenue += (item.quantity * Number(item.priceAtTime));
+        itemCounts[item.menuItemId].qtySold += (item.quantity || 0);
+        itemCounts[item.menuItemId].revenue += ((item.quantity || 0) * Number(item.priceAtTime || 0));
       });
     });
 

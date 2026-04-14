@@ -1,36 +1,35 @@
-# Dependencies
-node_modules/
-frontend/node_modules/
+# Node.js
+**/node_modules
+**/npm-debug.log*
+**/yarn-debug.log*
+**/yarn-error.log*
 
-# Build output
-dist/
-frontend/.next/
-frontend/out/
+# Next.js
+**/.next/
+**/out/
+**/build/
 
-# Environment
+# Production Build
+**/dist
+
+# Environment variables
 .env
 .env.local
-.env.production
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-.DS_Store
-
-# Prisma
-prisma/*.db
-prisma/*.db-journal
+.env.development.local
+.env.test.local
+.env.production.local
 
 # Logs
 *.log
 npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
-# OS
-Thumbs.db
+# IDEs
+.vscode/
+.idea/
+.DS_Store
 
-# Planning doc artifacts (keep .md, ignore .docx temp files)
-*.txt
-
-/src/generated/prisma
+# Prisma
+/backend/prisma/migrations/
+/backend/prisma/dev.db

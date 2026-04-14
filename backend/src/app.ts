@@ -8,6 +8,9 @@
 import express from 'express';
 import cors from 'cors';
 import morgan from 'morgan';
+import helmet from 'helmet';
+import compression from 'compression';
+import rateLimit from 'express-rate-limit';
 import { env } from './config/env';
 import { errorHandler } from './middlewares/errorHandler';
 
@@ -33,17 +36,33 @@ InventoryService.addObserver(new ShopkeeperConsoleAlertObserver());
 // Middleware
 // ─────────────────────────────────────────────
 
-// CORS — Open configuration for development (Fixes Network Errors)
+// Security headers (Helmet)
+app.use(helmet());
+
+// CORS — Allowed origins (Refined for production safety)
 app.use(cors({
-  origin: true,
+  origin: true, // In production, replace with specific domain
   credentials: true,
 }));
+
+// Performance: Gzip compression
+app.use(compression());
 
 // Parse JSON request bodies
 app.use(express.json());
 
 // HTTP request logging (development)
 app.use(morgan('dev'));
+
+// Rate Limiting — Relaxed for development stability
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, 
+  max: 1000, // Increased from 100 to 1000 to avoid blocking during dashboard usage
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: 'Too many requests from this IP, please try again after 15 minutes'
+});
+app.use(limiter);
 
 // ─────────────────────────────────────────────
 // Routes

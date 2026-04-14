@@ -34,8 +34,17 @@ export const errorHandler = (
       case 'P2025': // Record not found
         res.status(404).json({ error: 'Record not found' });
         return;
+      case 'P2003': // Foreign key violation
+      case 'P2006': // Invalid value provided
+      case 'P2019': // Input error
+        res.status(400).json({ error: 'Database operation failed: Invalid data constraints' });
+        return;
+      case 'P2024': // Connection pool timeout
+        res.status(503).json({ error: 'Database connection timed out. Please try again.' });
+        return;
       default:
-        res.status(400).json({ error: 'Database operation failed' });
+        console.error('Unhandled Prisma Error:', err);
+        res.status(500).json({ error: `Internal database operation failed: ${err.code}` });
         return;
     }
   }

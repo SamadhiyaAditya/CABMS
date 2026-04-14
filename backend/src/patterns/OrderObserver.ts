@@ -43,3 +43,72 @@ export class ShopkeeperConsoleAlertObserver implements IStockObserver {
     );
   }
 }
+
+// -------------------------------------------------------------
+// ORDER OBSERVER (Added for SSE Dashboard push IMP-05)
+// -------------------------------------------------------------
+
+export interface OrderEvent {
+  type: 'ORDER_PLACED' | 'STATUS_CHANGED';
+  order: any;
+}
+
+export interface IOrderObserver {
+  onOrderUpdate(event: OrderEvent): void;
+}
+
+export class OrderEventEmitter {
+  private static instance: OrderEventEmitter;
+  private observers: IOrderObserver[] = [];
+
+  private constructor() {}
+
+  public static getInstance(): OrderEventEmitter {
+    if (!OrderEventEmitter.instance) {
+      OrderEventEmitter.instance = new OrderEventEmitter();
+    }
+    return OrderEventEmitter.instance;
+  }
+
+  public subscribe(observer: IOrderObserver) {
+    this.observers.push(observer);
+  }
+
+  public unsubscribe(observer: IOrderObserver) {
+    this.observers = this.observers.filter((o) => o !== observer);
+  }
+
+  public notify(event: OrderEvent) {
+    this.observers.forEach((o) => o.onOrderUpdate(event));
+  }
+}
+
+// -------------------------------------------------------------
+// DASHBOARD UPDATER OBSERVER (SSE)
+// -------------------------------------------------------------
+import { Response } from 'express';
+
+export class DashboardUpdater implements IOrderObserver {
+  private clients: Response[] = [];
+
+  constructor() {
+    OrderEventEmitter.getInstance().subscribe(this);
+  }
+
+  public addClient(res: Response) {
+    this.clients.push(res);
+    res.on('close', () => {
+      this.clients = this.clients.filter(c => c !== res);
+    });
+  }
+
+  onOrderUpdate(event: OrderEvent): void {
+    // Blast event to all connected dashboard SSE clients
+    const dataString = `data: ${JSON.stringify(event)}\n\n`;
+    this.clients.forEach(client => {
+      client.write(dataString);
+    });
+  }
+}
+
+export const liveDashboardUpdater = new DashboardUpdater();

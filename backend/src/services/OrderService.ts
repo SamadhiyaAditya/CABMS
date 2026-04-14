@@ -26,16 +26,22 @@ export class CartCheckoutProcess extends OrderTemplate {
 
   protected async reserveInventory(tx: any, cart: any): Promise<void> {
     // We actively lock the rows and decrement simultaneously utilizing Prisma constraints
+    // System Design: We use updateMany with a where clause to perform an ATOMIC check-and-decrement.
+    // If the count of updated rows is 0, it means someone else snatched the stock between fetch and reserve.
     for (const item of cart.items) {
-      const inventory = await tx.inventoryItem.findUnique({ where: { menuItemId: item.menuItemId }});
-      if (!inventory || inventory.stockCount < item.quantity) {
-        throw new StockError(`CRITICAL: Stock mismatch for ${item.name} during checkout phase.`);
-      }
-
-      await tx.inventoryItem.update({
-        where: { menuItemId: item.menuItemId },
-        data: { stockCount: { decrement: item.quantity } }
+      const updateResult = await tx.inventoryItem.updateMany({
+        where: { 
+          menuItemId: item.menuItemId,
+          stockCount: { gte: item.quantity }
+        },
+        data: { 
+          stockCount: { decrement: item.quantity } 
+        }
       });
+
+      if (updateResult.count === 0) {
+        throw new StockError(`CRITICAL: Stock mismatch for "${item.name}". It may have just sold out.`);
+      }
     }
   }
 
@@ -79,5 +85,10 @@ export class CartCheckoutProcess extends OrderTemplate {
     for (const item of orderData.items) {
       InventoryService.updateStock(item.menuItemId).catch(()=>null);
     }
+
+    // SSE notification
+    import('../patterns/OrderObserver').then(({ OrderEventEmitter }) => {
+      OrderEventEmitter.getInstance().notify({ type: 'ORDER_PLACED', order: orderData });
+    });
   }
 }

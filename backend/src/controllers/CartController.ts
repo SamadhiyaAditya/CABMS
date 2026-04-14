@@ -15,8 +15,8 @@ class CartController {
     const parsed = addToCartSchema.safeParse(req.body);
     if (!parsed.success) throw new ValidationError(parsed.error.issues.map((e: any) => e.message).join(', '));
 
-    await CartService.addItemToCart(customerId, parsed.data.menuItemId, parsed.data.quantity);
-    res.status(200).json({ success: true, message: 'Item added to cart' });
+    const cartItem = await CartService.addItemToCart(customerId, parsed.data.menuItemId, parsed.data.quantity);
+    res.status(200).json({ success: true, message: 'Item added to cart', cartItem });
   }
 
   async updateItem(req: Request, res: Response) {

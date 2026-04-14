@@ -13,7 +13,7 @@ class CartService {
       where: { customerId },
       include: {
         items: {
-          include: { menuItem: true },
+          include: { menuItem: { include: { inventoryItem: true } } },
           orderBy: { id: 'asc' }
         }
       }
@@ -22,7 +22,7 @@ class CartService {
     if (!cart) {
       cart = await this.prisma.cart.create({
         data: { customerId },
-        include: { items: { include: { menuItem: true } } }
+        include: { items: { include: { menuItem: { include: { inventoryItem: true } } } } }
       });
     }
 
@@ -39,7 +39,8 @@ class CartService {
         price: Number(cartItem.menuItem.price),
         quantity: cartItem.quantity,
         itemTotal,
-        isAvailable: cartItem.menuItem.isAvailable
+        isAvailable: cartItem.menuItem.isAvailable,
+        stockCount: cartItem.menuItem.inventoryItem?.stockCount || 0
       };
     });
 
@@ -64,29 +65,20 @@ class CartService {
       throw new StockError('Not enough stock available for this item');
     }
 
-    // Upsert logic: if item is already in cart, just increase quantity
-    const existingCartItem = await this.prisma.cartItem.findUnique({
-      where: { cartId_menuItemId: { cartId: rawCart.id, menuItemId } }
-    });
-
-    if (existingCartItem) {
-      const newQuantity = existingCartItem.quantity + quantity;
-      if (item.inventoryItem && item.inventoryItem.stockCount < newQuantity) {
-        throw new StockError('Adding this many exceeds available stock');
+    // Use Prisma Upsert for atomic check-and-act to prevent 409 Conflict (P2002)
+    return await this.prisma.cartItem.upsert({
+      where: {
+        cartId_menuItemId: { cartId: rawCart.id, menuItemId }
+      },
+      update: {
+        quantity: { increment: quantity }
+      },
+      create: {
+        cartId: rawCart.id,
+        menuItemId,
+        quantity
       }
-      return await this.prisma.cartItem.update({
-        where: { id: existingCartItem.id },
-        data: { quantity: newQuantity }
-      });
-    } else {
-      return await this.prisma.cartItem.create({
-        data: {
-          cartId: rawCart.id,
-          menuItemId,
-          quantity
-        }
-      });
-    }
+    });
   }
 
   async updateItemQuantity(customerId: string, cartItemId: string, quantity: number) {
@@ -104,7 +96,7 @@ class CartService {
     if (!cartItem) throw new NotFoundError('Item not in cart');
 
     if (cartItem.menuItem.inventoryItem && cartItem.menuItem.inventoryItem.stockCount < quantity) {
-      throw new StockError('Cannot increase quantity further than available stock');
+      throw new StockError(`Only ${cartItem.menuItem.inventoryItem.stockCount} units available in stock`);
     }
 
     return await this.prisma.cartItem.update({

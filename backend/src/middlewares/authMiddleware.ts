@@ -32,13 +32,19 @@ declare global {
  * Returns 401 if token is missing, invalid, or expired.
  */
 export const authenticate = (req: Request, _res: Response, next: NextFunction): void => {
+  let token: string | undefined;
   const authHeader = req.headers.authorization;
 
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    throw new AuthError('No token provided');
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    token = authHeader.split(' ')[1];
+  } else if (req.query.token) {
+    // Fallback for SSE or other direct links that can't send headers
+    token = req.query.token as string;
   }
 
-  const token = authHeader.split(' ')[1];
+  if (!token) {
+    throw new AuthError('No token provided');
+  }
 
   try {
     const decoded = jwt.verify(token, env.JWT_SECRET) as JwtPayload;

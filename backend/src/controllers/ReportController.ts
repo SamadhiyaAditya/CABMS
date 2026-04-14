@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { ReportContext, SalesReportStrategy, InventoryReportStrategy } from '../patterns/ReportStrategy';
+import { ReportContext, SalesReportStrategy, InventoryReportStrategy, TopItemsStrategy } from '../patterns/ReportStrategy';
 import { ValidationError } from '../utils/errors';
 
 class ReportController {
@@ -16,8 +16,11 @@ class ReportController {
         case 'inventory':
           strategy = new InventoryReportStrategy();
           break;
+        case 'top-items':
+          strategy = new TopItemsStrategy();
+          break;
         default:
-          return res.status(400).json({ success: false, error: 'Invalid report type. Supported: sales, inventory' });
+          return res.status(400).json({ success: false, error: 'Invalid report type. Supported: sales, inventory, top-items' });
       }
 
       const context = new ReportContext(strategy);

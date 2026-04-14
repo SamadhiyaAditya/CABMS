@@ -96,7 +96,43 @@ export class InventoryReportStrategy implements IReportStrategy {
 }
 
 /**
- * 4. The Context
+ * 4. Concrete Strategy C: Top Ordered Items
+ * Calculates the most popular items by total order frequency across all completed orders.
+ */
+export class TopItemsStrategy implements IReportStrategy {
+  private prisma: PrismaClient = DatabaseConnection.getInstance();
+
+  async generateReport() {
+    const orders = await this.prisma.order.findMany({
+      where: { status: 'PICKED_UP' },
+      include: { items: { include: { menuItem: true } } }
+    });
+
+    const itemCounts: Record<string, { name: string; qtySold: number; revenue: number }> = {};
+    
+    orders.forEach((order: any) => {
+      order.items.forEach((item: any) => {
+        if (!itemCounts[item.menuItemId]) {
+          itemCounts[item.menuItemId] = { name: item.menuItem.name, qtySold: 0, revenue: 0 };
+        }
+        itemCounts[item.menuItemId].qtySold += item.quantity;
+        itemCounts[item.menuItemId].revenue += (item.quantity * Number(item.priceAtTime));
+      });
+    });
+
+    const topItems = Object.values(itemCounts)
+      .sort((a, b) => b.qtySold - a.qtySold)
+      .slice(0, 10); // Top 10
+
+    return {
+      type: 'TOP_ITEMS_ANALYTICS',
+      topItems
+    };
+  }
+}
+
+/**
+ * 5. The Context
  * The Controller will use this class to execute the correct strategy dynamically.
  */
 export class ReportContext {

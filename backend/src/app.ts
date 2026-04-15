@@ -39,9 +39,22 @@ InventoryService.addObserver(new ShopkeeperConsoleAlertObserver());
 // Security headers (Helmet)
 app.use(helmet());
 
-// CORS — Allowed origins (Refined for production safety)
+// CORS — Allowed origins (Supports both Local Dev and Production)
+const allowedOrigins = [
+  'http://localhost:3000',
+  env.FRONTEND_URL
+].filter(Boolean);
+
 app.use(cors({
-  origin: true, // In production, replace with specific domain
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps or curl)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) !== -1 || origin.startsWith('http://localhost:')) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
 }));
 

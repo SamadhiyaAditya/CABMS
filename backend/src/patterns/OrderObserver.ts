@@ -86,29 +86,4 @@ export class OrderEventEmitter {
 // -------------------------------------------------------------
 // DASHBOARD UPDATER OBSERVER (SSE)
 // -------------------------------------------------------------
-import { Response } from 'express';
 
-export class DashboardUpdater implements IOrderObserver {
-  private clients: Response[] = [];
-
-  constructor() {
-    OrderEventEmitter.getInstance().subscribe(this);
-  }
-
-  public addClient(res: Response) {
-    this.clients.push(res);
-    res.on('close', () => {
-      this.clients = this.clients.filter(c => c !== res);
-    });
-  }
-
-  onOrderUpdate(event: OrderEvent): void {
-    // Blast event to all connected dashboard SSE clients
-    const dataString = `data: ${JSON.stringify(event)}\n\n`;
-    this.clients.forEach(client => {
-      client.write(dataString);
-    });
-  }
-}
-
-export const liveDashboardUpdater = new DashboardUpdater();

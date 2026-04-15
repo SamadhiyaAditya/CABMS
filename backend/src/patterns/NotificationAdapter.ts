@@ -30,6 +30,19 @@ export interface INotificationService {
  * 
  * This is the default adapter used in the system.
  */
+export class InAppNotificationAdapter implements INotificationService {
+  private notifications: Array<{ to: string; message: string; timestamp: Date }> = [];
+
+  async send(to: string, message: string): Promise<void> {
+    // In a real system, this would store to a notifications table
+    // and push via WebSocket/SSE to the client
+    this.notifications.push({
+      to,
+      message,
+      timestamp: new Date(),
+    });
+    console.log(`[InApp] Notification to ${to}: ${message}`);
+  }
 
 
   /**

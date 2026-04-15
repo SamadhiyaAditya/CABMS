@@ -186,7 +186,7 @@ export default function ShopkeeperDashboard() {
 
       // SSE Connection for Live Updates
       const token = Cookies.get('cams_token');
-      const eventSource = new EventSource(`http://localhost:3001/orders/stream?token=${token}`, { withCredentials: true });
+      const eventSource = new EventSource(`${process.env.NEXT_PUBLIC_API_URL}/orders/stream?token=${token}`, { withCredentials: true });
       eventSource.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);

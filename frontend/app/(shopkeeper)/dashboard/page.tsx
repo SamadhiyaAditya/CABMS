@@ -73,7 +73,38 @@ const CreateItemModal = ({ categoryId, onClose, onRefresh }: { categoryId: strin
   );
 };
 
+// ─── Modal: Edit Item ───
+const EditItemModal = ({ item, onClose, onRefresh }: { item: any, onClose: ()=>void, onRefresh: ()=>void }) => {
+  const [name, setName] = useState(item.name);
+  const [desc, setDesc] = useState(item.description || "");
+  const [price, setPrice] = useState(item.price);
+  const [loading, setLoading] = useState(false);
 
+  const submit = async () => {
+    setLoading(true);
+    try {
+      await api.put(`/menu/items/${item.id}`, { name, description: desc, price: Number(price) });
+      onRefresh();
+      onClose();
+    } catch (e) {
+      alert("Error: " + getErrorMessage(e));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.5)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div className="card" style={{ width: "400px" }}>
+        <h3 style={{ display: "flex", justifyContent: "space-between", marginBottom: "16px" }}>Edit Menu Item <X onClick={onClose} style={{cursor:"pointer", opacity: 0.5}}/></h3>
+        <input className="form-input" style={{marginBottom: "12px"}} placeholder="Item Name" value={name} onChange={e=>setName(e.target.value)} />
+        <input type="number" className="form-input" style={{marginBottom: "12px"}} placeholder="Price (₹)" value={price} onChange={e=>setPrice(e.target.value)} />
+        <input className="form-input" style={{marginBottom: "16px"}} placeholder="Description (optional)" value={desc} onChange={e=>setDesc(e.target.value)} />
+        <button onClick={submit} className="btn btn-primary" style={{ width: "100%" }} disabled={loading}>{loading ? 'Saving...' : 'Update Item'}</button>
+      </div>
+    </div>
+  );
+};
 
 // ─── Inline Inventory Editor ───
 const InlineInventoryEditor = ({ item, onSaved }: { item: any, onSaved: ()=>void }) => {

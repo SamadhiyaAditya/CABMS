@@ -117,3 +117,38 @@ export class MenuCategoryComposite implements MenuComponent {
  * OOP: Polymorphism — implements the same interface as MenuCategoryComposite
  */
 
+export class MenuItemLeaf implements MenuComponent {
+  constructor(
+    private readonly id: string,
+    private readonly name: string,
+    private readonly price: number,
+    private readonly description: string | null = null,
+    private readonly stockCount: number = 0
+  ) {}
+
+  getName(): string {
+    return this.name;
+  }
+
+  getPrice(): number {
+    return this.price;
+  }
+
+  /**
+   * An item is available if its stock count is greater than 0.
+   * Checks inventory at the domain model level.
+   */
+  isAvailable(): boolean {
+    return this.stockCount > 0;
+  }
+
+  display(indent: number = 0): string {
+    const prefix = '  '.repeat(indent);
+    const status = this.isAvailable() ? '✅' : '❌';
+    return `${prefix}${status} ${this.name} — ₹${this.price} (stock: ${this.stockCount})\n`;
+  }
+
+  getId(): string {
+    return this.id;
+  }
+}

@@ -7,36 +7,7 @@ import Cookies from "js-cookie";
 import { useRouter } from "next/navigation";
 import { Trash2, Edit2 } from "lucide-react";
 
-// ─── Modal: Create Category ───
-const CreateCategoryModal = ({ onClose, onRefresh }: { onClose: ()=>void, onRefresh: ()=>void }) => {
-  const [name, setName] = useState("");
-  const [desc, setDesc] = useState("");
-  const [loading, setLoading] = useState(false);
 
-  const submit = async () => {
-    setLoading(true);
-    try {
-      await api.post("/menu/categories", { name, description: desc });
-      onRefresh();
-      onClose();
-    } catch (e) {
-      alert("Error: " + getErrorMessage(e));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.5)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <div className="card" style={{ width: "400px" }}>
-        <h3 style={{ display: "flex", justifyContent: "space-between", marginBottom: "16px" }}>Add Category <X onClick={onClose} style={{cursor:"pointer", opacity: 0.5}}/></h3>
-        <input className="form-input" style={{marginBottom: "12px"}} placeholder="Category Name (e.g. Cold Drinks)" value={name} onChange={e=>setName(e.target.value)} />
-        <input className="form-input" style={{marginBottom: "16px"}} placeholder="Description (optional)" value={desc} onChange={e=>setDesc(e.target.value)} />
-        <button onClick={submit} className="btn btn-primary" style={{ width: "100%" }} disabled={loading}>{loading ? 'Creating...' : 'Confirm Category'}</button>
-      </div>
-    </div>
-  );
-};
 
 // ─── Modal: Create Item ───
 const CreateItemModal = ({ categoryId, onClose, onRefresh }: { categoryId: string, onClose: ()=>void, onRefresh: ()=>void }) => {

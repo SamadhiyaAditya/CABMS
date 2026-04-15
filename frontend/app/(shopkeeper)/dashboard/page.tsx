@@ -38,7 +38,40 @@ const CreateCategoryModal = ({ onClose, onRefresh }: { onClose: ()=>void, onRefr
   );
 };
 
+// ─── Modal: Create Item ───
+const CreateItemModal = ({ categoryId, onClose, onRefresh }: { categoryId: string, onClose: ()=>void, onRefresh: ()=>void }) => {
+  const [name, setName] = useState("");
+  const [desc, setDesc] = useState("");
+  const [price, setPrice] = useState("");
+  const [initialStock, setInitialStock] = useState("10");
+  const [loading, setLoading] = useState(false);
 
+  const submit = async () => {
+    setLoading(true);
+    try {
+      await api.post("/menu/items", { categoryId, name, description: desc, price: Number(price), initialStock: Number(initialStock) });
+      onRefresh();
+      onClose();
+    } catch (e) {
+      alert("Error: " + getErrorMessage(e));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.5)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div className="card" style={{ width: "400px" }}>
+        <h3 style={{ display: "flex", justifyContent: "space-between", marginBottom: "16px" }}>Add Menu Item <X onClick={onClose} style={{cursor:"pointer", opacity: 0.5}}/></h3>
+        <input className="form-input" style={{marginBottom: "12px"}} placeholder="Item Name (e.g. Paneer Roll)" value={name} onChange={e=>setName(e.target.value)} />
+        <input type="number" className="form-input" style={{marginBottom: "12px"}} placeholder="Price (₹)" value={price} onChange={e=>setPrice(e.target.value)} />
+        <input type="number" className="form-input" style={{marginBottom: "12px"}} placeholder="Initial Stock Count" value={initialStock} onChange={e=>setInitialStock(e.target.value)} />
+        <input className="form-input" style={{marginBottom: "16px"}} placeholder="Description (optional)" value={desc} onChange={e=>setDesc(e.target.value)} />
+        <button onClick={submit} className="btn btn-primary" style={{ width: "100%" }} disabled={loading}>{loading ? 'Creating...' : 'Publish Item'}</button>
+      </div>
+    </div>
+  );
+};
 
 // ─── Modal: Edit Item ───
 const EditItemModal = ({ item, onClose, onRefresh }: { item: any, onClose: ()=>void, onRefresh: ()=>void }) => {

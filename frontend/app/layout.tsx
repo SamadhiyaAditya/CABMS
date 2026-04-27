@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 
 import "./globals.css";
+import { ToastProvider } from "./components/Toast";
 
 export const metadata: Metadata = {
   title: "CAMS | Chai Adda Management System",
@@ -30,7 +31,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <main>{children}</main>
+        <ToastProvider>
+          <main>{children}</main>
+        </ToastProvider>
       </body>
     </html>
   );

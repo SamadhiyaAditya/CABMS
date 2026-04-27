@@ -61,8 +61,12 @@ class CartService {
     });
 
     if (!item) throw new NotFoundError('Menu item not found');
-    if (!item.isAvailable || (item.inventoryItem && item.inventoryItem.stockCount < quantity)) {
-      throw new StockError('Not enough stock available for this item');
+
+    const existingCartItem = rawCart.items.find((i: any) => i.menuItemId === menuItemId);
+    const newTotalQuantity = (existingCartItem?.quantity || 0) + quantity;
+
+    if (!item.isAvailable || (item.inventoryItem && item.inventoryItem.stockCount < newTotalQuantity)) {
+      throw new StockError(`Not enough stock available. You can only add ${item.inventoryItem?.stockCount || 0} total units.`);
     }
 
     // Use Prisma Upsert for atomic check-and-act to prevent 409 Conflict (P2002)

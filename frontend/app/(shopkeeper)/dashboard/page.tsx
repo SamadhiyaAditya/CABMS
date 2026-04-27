@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { api, getErrorMessage } from "../../lib/api";
-import { Coffee, Tag, Plus, AlertTriangle, LogOut, BarChart3, X, Save, ClipboardList } from "lucide-react";
+import { Coffee, Tag, Plus, AlertTriangle, LogOut, BarChart3, X, Save, ClipboardList, Bell } from "lucide-react";
+import { useToast } from "../../components/Toast";
 import Cookies from "js-cookie";
 import { useRouter } from "next/navigation";
 import { Trash2, Edit2 } from "lucide-react";
@@ -12,6 +13,7 @@ const CreateCategoryModal = ({ onClose, onRefresh }: { onClose: ()=>void, onRefr
   const [name, setName] = useState("");
   const [desc, setDesc] = useState("");
   const [loading, setLoading] = useState(false);
+  const toast = useToast();
 
   const submit = async () => {
     setLoading(true);
@@ -20,7 +22,7 @@ const CreateCategoryModal = ({ onClose, onRefresh }: { onClose: ()=>void, onRefr
       onRefresh();
       onClose();
     } catch (e) {
-      alert("Error: " + getErrorMessage(e));
+      toast.error("Error: " + getErrorMessage(e));
     } finally {
       setLoading(false);
     }
@@ -44,16 +46,18 @@ const CreateItemModal = ({ categoryId, onClose, onRefresh }: { categoryId: strin
   const [desc, setDesc] = useState("");
   const [price, setPrice] = useState("");
   const [initialStock, setInitialStock] = useState("10");
+  const [imageUrl, setImageUrl] = useState("");
   const [loading, setLoading] = useState(false);
+  const toast = useToast();
 
   const submit = async () => {
     setLoading(true);
     try {
-      await api.post("/menu/items", { categoryId, name, description: desc, price: Number(price), initialStock: Number(initialStock) });
+      await api.post("/menu/items", { categoryId, name, description: desc, price: Number(price), initialStock: Number(initialStock), imageUrl });
       onRefresh();
       onClose();
     } catch (e) {
-      alert("Error: " + getErrorMessage(e));
+      toast.error("Error: " + getErrorMessage(e));
     } finally {
       setLoading(false);
     }
@@ -66,6 +70,7 @@ const CreateItemModal = ({ categoryId, onClose, onRefresh }: { categoryId: strin
         <input className="form-input" style={{marginBottom: "12px"}} placeholder="Item Name (e.g. Paneer Roll)" value={name} onChange={e=>setName(e.target.value)} />
         <input type="number" className="form-input" style={{marginBottom: "12px"}} placeholder="Price (₹)" value={price} onChange={e=>setPrice(e.target.value)} />
         <input type="number" className="form-input" style={{marginBottom: "12px"}} placeholder="Initial Stock Count" value={initialStock} onChange={e=>setInitialStock(e.target.value)} />
+        <input className="form-input" style={{marginBottom: "12px"}} placeholder="Image URL (optional)" value={imageUrl} onChange={e=>setImageUrl(e.target.value)} />
         <input className="form-input" style={{marginBottom: "16px"}} placeholder="Description (optional)" value={desc} onChange={e=>setDesc(e.target.value)} />
         <button onClick={submit} className="btn btn-primary" style={{ width: "100%" }} disabled={loading}>{loading ? 'Creating...' : 'Publish Item'}</button>
       </div>
@@ -78,16 +83,18 @@ const EditItemModal = ({ item, onClose, onRefresh }: { item: any, onClose: ()=>v
   const [name, setName] = useState(item.name);
   const [desc, setDesc] = useState(item.description || "");
   const [price, setPrice] = useState(item.price);
+  const [imageUrl, setImageUrl] = useState(item.imageUrl || "");
   const [loading, setLoading] = useState(false);
+  const toast = useToast();
 
   const submit = async () => {
     setLoading(true);
     try {
-      await api.put(`/menu/items/${item.id}`, { name, description: desc, price: Number(price) });
+      await api.put(`/menu/items/${item.id}`, { name, description: desc, price: Number(price), imageUrl });
       onRefresh();
       onClose();
     } catch (e) {
-      alert("Error: " + getErrorMessage(e));
+      toast.error("Error: " + getErrorMessage(e));
     } finally {
       setLoading(false);
     }
@@ -99,6 +106,7 @@ const EditItemModal = ({ item, onClose, onRefresh }: { item: any, onClose: ()=>v
         <h3 style={{ display: "flex", justifyContent: "space-between", marginBottom: "16px" }}>Edit Menu Item <X onClick={onClose} style={{cursor:"pointer", opacity: 0.5}}/></h3>
         <input className="form-input" style={{marginBottom: "12px"}} placeholder="Item Name" value={name} onChange={e=>setName(e.target.value)} />
         <input type="number" className="form-input" style={{marginBottom: "12px"}} placeholder="Price (₹)" value={price} onChange={e=>setPrice(e.target.value)} />
+        <input className="form-input" style={{marginBottom: "12px"}} placeholder="Image URL (optional)" value={imageUrl} onChange={e=>setImageUrl(e.target.value)} />
         <input className="form-input" style={{marginBottom: "16px"}} placeholder="Description (optional)" value={desc} onChange={e=>setDesc(e.target.value)} />
         <button onClick={submit} className="btn btn-primary" style={{ width: "100%" }} disabled={loading}>{loading ? 'Saving...' : 'Update Item'}</button>
       </div>
@@ -110,6 +118,7 @@ const EditItemModal = ({ item, onClose, onRefresh }: { item: any, onClose: ()=>v
 const InlineInventoryEditor = ({ item, onSaved }: { item: any, onSaved: ()=>void }) => {
   const [stock, setStock] = useState(item.stockCount);
   const [saving, setSaving] = useState(false);
+  const toast = useToast();
 
   const executeSave = async () => {
     setSaving(true);
@@ -117,7 +126,7 @@ const InlineInventoryEditor = ({ item, onSaved }: { item: any, onSaved: ()=>void
       await api.patch(`/inventory/${item.menuItemId}`, { stockCount: Number(stock), lowStockThreshold: item.lowStockThreshold });
       onSaved();
     } catch(e) {
-      alert("Failed updating stock: " + getErrorMessage(e));
+      toast.error("Failed updating stock: " + getErrorMessage(e));
     } finally {
       setSaving(false);
     }
@@ -136,13 +145,25 @@ const InlineInventoryEditor = ({ item, onSaved }: { item: any, onSaved: ()=>void
 // ─── Main Dashboard ───
 export default function ShopkeeperDashboard() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<"ORDERS" | "KITCHEN" | "MENU" | "INVENTORY" | "REPORTS">("ORDERS");
+  const [activeTab, setActiveTab] = useState<"ORDERS" | "MENU" | "INVENTORY" | "REPORTS">("ORDERS");
+  const [orderFilter, setOrderFilter] = useState<"today" | "week" | "month" | "all">("today");
+  const [analyticsFilter, setAnalyticsFilter] = useState<"today" | "week" | "month" | "all">("all");
   const [categories, setCategories] = useState<any[]>([]);
   const [inventory, setInventory] = useState<any[]>([]);
   const [orders, setOrders] = useState<any[]>([]);
   const [salesReport, setSalesReport] = useState<any>(null);
   const [inventoryReport, setInventoryReport] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const toast = useToast();
+
+  // Notification state
+  const [notifications, setNotifications] = useState<Array<{ id: number; type: string; message: string; time: Date }>>([]);
+  const [showNotifPanel, setShowNotifPanel] = useState(false);
+  const stockAlertsGenerated = useRef(false);
+
+  const addNotification = (type: string, message: string) => {
+    setNotifications((prev) => [{ id: Date.now() + Math.random(), type, message, time: new Date() }, ...prev].slice(0, 50));
+  };
 
   // Modals state
   const [showCatModal, setShowCatModal] = useState(false);
@@ -163,6 +184,17 @@ export default function ShopkeeperDashboard() {
       setCategories(menuRes.data.menu);
       setInventory(invRes.data.inventory);
       setOrders(ordersRes.data.orders);
+
+      // Generate low-stock notifications ONLY on first load (Observer pattern — UI side)
+      if (!stockAlertsGenerated.current) {
+        const invItems = invRes.data.inventory || [];
+        invItems.forEach((inv: any) => {
+          if (inv.stockCount <= inv.lowStockThreshold) {
+            addNotification('stock', `⚠️ ${inv.menuItem.name} is low on stock (${inv.stockCount} left, threshold: ${inv.lowStockThreshold})`);
+          }
+        });
+        stockAlertsGenerated.current = true;
+      }
       
       // Inject topItems logic into salesReport
       const sales = salesRes.data.report;
@@ -181,25 +213,54 @@ export default function ShopkeeperDashboard() {
   useEffect(() => {
     if (!Cookies.get('cams_token')) {
       router.push('/');
-    } else {
-      fetchData();
-
-      // SSE Connection for Live Updates
-      const token = Cookies.get('cams_token');
-      const eventSource = new EventSource(`${process.env.NEXT_PUBLIC_API_URL}/orders/stream?token=${token}`, { withCredentials: true });
-      eventSource.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          if (data.message === "connected") return;
-          console.log("SSE Event!", data);
-          fetchData(); // Trigger re-render to reflect new list locally
-        } catch (e) { }
-      };
-
-      return () => {
-        eventSource.close();
-      };
+      return;
     }
+
+    fetchData();
+
+    // 2s auto-refresh for live order updates
+    const pollInterval = setInterval(() => {
+      api.get('/orders/all').then(res => setOrders(res.data.orders)).catch(() => {});
+    }, 2000);
+
+    // SSE Connection for Live Updates
+    const token = Cookies.get('cams_token');
+    const eventSource = new EventSource(`${process.env.NEXT_PUBLIC_API_URL}/orders/stream?token=${token}`, { withCredentials: true });
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.message === "connected") return;
+        
+        if (data.type === 'STOCK_UPDATED') {
+          setInventory(prev => {
+            const updated = [...prev];
+            const idx = updated.findIndex(i => i.menuItemId === data.item.id);
+            if (idx > -1) {
+              updated[idx] = { ...updated[idx], stockCount: data.item.stockCount };
+            }
+            return updated;
+          });
+          if (data.item.stockCount === 0) {
+            toast.error(`⚠️ Out of Stock!`);
+            addNotification('stock', `An item just went out of stock!`);
+          }
+          return;
+        }
+
+        if (data.type === 'ORDER_PLACED') {
+          const msg = `New order from ${data.order?.customer?.name || 'a customer'} — ₹${data.order?.totalAmount || '?'}`;
+          addNotification('order', msg);
+          toast.success('🛎️ ' + msg);
+        } else if (data.type === 'STATUS_CHANGED') {
+          addNotification('status', `Order #${data.order?.id?.slice(0,8)} → ${data.order?.status}`);
+        }
+      } catch (e) { }
+    };
+
+    return () => {
+      clearInterval(pollInterval);
+      eventSource.close();
+    };
   }, []);
 
   const handleLogout = () => {
@@ -213,7 +274,7 @@ export default function ShopkeeperDashboard() {
       await api.patch(`/orders/${orderId}/status`, { status: newStatus });
       fetchData();
     } catch (err) {
-      alert("Failed: " + getErrorMessage(err));
+      toast.error("Failed: " + getErrorMessage(err));
     }
   };
 
@@ -235,7 +296,7 @@ export default function ShopkeeperDashboard() {
   };
 
   return (
-    <div style={{ minHeight: "100vh", backgroundColor: "var(--cams-surface-layered)" }}>
+    <div style={{ minHeight: "100vh", backgroundColor: "var(--cams-surface-layered)" }} onClick={() => showNotifPanel && setShowNotifPanel(false)}>
       
       {showCatModal && <CreateCategoryModal onClose={() => setShowCatModal(false)} onRefresh={fetchData} />}
       {showItemModal && <CreateItemModal categoryId={showItemModal} onClose={() => setShowItemModal(null)} onRefresh={fetchData} />}
@@ -246,9 +307,68 @@ export default function ShopkeeperDashboard() {
           <div className="navbar-logo">
             <Coffee color="var(--cams-primary)" size={24} /> Administrator Panel
           </div>
-          <button onClick={handleLogout} className="btn btn-outline" style={{ padding: "8px 16px" }}>
-            <LogOut size={16} /> Logout
-          </button>
+          <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+            <div style={{ position: "relative" }} onClick={(e) => e.stopPropagation()}>
+              <button
+                onClick={() => setShowNotifPanel(!showNotifPanel)}
+                className="btn btn-outline"
+                style={{ padding: "8px", position: "relative" }}
+              >
+                <Bell size={18} />
+                {notifications.length > 0 && (
+                  <span style={{
+                    position: "absolute", top: "-4px", right: "-4px",
+                    background: "var(--cams-danger)", color: "white",
+                    borderRadius: "50%", width: "18px", height: "18px",
+                    fontSize: "0.65rem", fontWeight: 700,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                  }}>{notifications.length > 9 ? '9+' : notifications.length}</span>
+                )}
+              </button>
+
+              {/* Notification Dropdown */}
+              {showNotifPanel && (
+                <div style={{
+                  position: "absolute", top: "48px", right: 0,
+                  width: "360px", maxHeight: "400px", overflowY: "auto",
+                  background: "var(--cams-surface)", borderRadius: "var(--radius-lg)",
+                  border: "1px solid var(--cams-border)", boxShadow: "0 12px 40px rgba(0,0,0,0.15)",
+                  zIndex: 200, padding: "0",
+                }}>
+                  <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--cams-border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <h4 style={{ margin: 0, fontSize: "0.95rem" }}>Notifications</h4>
+                    {notifications.length > 0 && (
+                      <button onClick={() => setNotifications([])} style={{ background: "none", border: "none", color: "var(--cams-text-muted)", fontSize: "0.75rem", cursor: "pointer" }}>Clear all</button>
+                    )}
+                  </div>
+                  {notifications.length === 0 ? (
+                    <div style={{ padding: "32px 20px", textAlign: "center", color: "var(--cams-text-muted)", fontSize: "0.85rem" }}>No notifications yet</div>
+                  ) : (
+                    notifications.map((n) => (
+                      <div key={n.id} style={{ padding: "12px 20px", borderBottom: "1px solid var(--cams-border)", fontSize: "0.85rem" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
+                          {n.type === 'order' ? (
+                            <span className="badge badge-success" style={{ fontSize: "0.65rem" }}>NEW ORDER</span>
+                          ) : n.type === 'stock' ? (
+                            <span className="badge badge-danger" style={{ fontSize: "0.65rem" }}>LOW STOCK</span>
+                          ) : (
+                            <span className="badge badge-warning" style={{ fontSize: "0.65rem" }}>STATUS</span>
+                          )}
+                          <span style={{ fontSize: "0.7rem", color: "var(--cams-text-muted)", marginLeft: "auto" }}>
+                            {n.time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+                        <div style={{ color: "var(--cams-text)" }}>{n.message}</div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+            <button onClick={handleLogout} className="btn btn-outline" style={{ padding: "8px 16px" }}>
+              <LogOut size={16} /> Logout
+            </button>
+          </div>
         </div>
       </nav>
 
@@ -257,10 +377,7 @@ export default function ShopkeeperDashboard() {
         {/* Sidebar */}
         <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
           <button className={`btn ${activeTab === "ORDERS" ? "btn-primary" : "btn-outline"}`} style={{ justifyContent: "flex-start", width: "100%", border: "none" }} onClick={() => setActiveTab("ORDERS")}>
-            <ClipboardList size={18} /> Live Orders
-          </button>
-          <button className={`btn ${activeTab === "KITCHEN" ? "btn-primary" : "btn-outline"}`} style={{ justifyContent: "flex-start", width: "100%", border: "none", background: activeTab === "KITCHEN" ? "var(--cams-danger)" : "" }} onClick={() => setActiveTab("KITCHEN")}>
-            <AlertTriangle size={18} /> Kitchen View
+            <ClipboardList size={18} /> Orders
           </button>
           <button className={`btn ${activeTab === "MENU" ? "btn-primary" : "btn-outline"}`} style={{ justifyContent: "flex-start", width: "100%", border: "none" }} onClick={() => setActiveTab("MENU")}>
             <Tag size={18} /> Menu Management
@@ -280,20 +397,26 @@ export default function ShopkeeperDashboard() {
           ) : (
             <>
               {/* ─── ORDERS TAB ─── */}
-              {activeTab === "ORDERS" && (
+              {activeTab === "ORDERS" && (() => {
+                const now = new Date();
+                const filterDate = (d: string) => {
+                  const date = new Date(d);
+                  if (orderFilter === 'today') return date.toDateString() === now.toDateString();
+                  if (orderFilter === 'week') return (now.getTime() - date.getTime()) < 7 * 86400000;
+                  if (orderFilter === 'month') return (now.getTime() - date.getTime()) < 30 * 86400000;
+                  return true;
+                };
+                const liveOrders = orders.filter(o => o.status === 'PENDING' || o.status === 'READY');
+                const completedOrders = orders.filter(o => o.status === 'PICKED_UP').filter(o => filterDate(o.createdAt));
+                return (
                 <div>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
-                    <h2>Live Orders</h2>
-                    <button onClick={fetchData} className="btn btn-outline" style={{ padding: "6px 12px" }}>Refresh</button>
-                  </div>
-
-                  {orders.length === 0 && <div className="card" style={{color: "var(--cams-text-muted)"}}>No orders have been placed yet.</div>}
-
-                  <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-                    {orders.map((order) => {
+                  <h2 style={{ marginBottom: "16px" }}>Live Orders</h2>
+                  {liveOrders.length === 0 && <div className="card" style={{color: "var(--cams-text-muted)", marginBottom: "32px"}}>No active orders right now.</div>}
+                  <div style={{ display: "flex", flexDirection: "column", gap: "16px", marginBottom: "32px" }}>
+                    {liveOrders.map((order) => {
                       const action = getNextAction(order.status);
                       return (
-                        <div key={order.id} className="card" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                        <div key={order.id} className="card" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderLeft: `4px solid ${order.status === 'READY' ? 'var(--cams-success)' : 'var(--cams-warning)'}` }}>
                           <div style={{ flex: 1 }}>
                             <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "12px" }}>
                               <h3 style={{ margin: 0, fontSize: "1rem" }}>Order #{order.id.slice(0, 8)}</h3>
@@ -304,23 +427,17 @@ export default function ShopkeeperDashboard() {
                             </div>
                             <ul style={{ listStyle: "none", padding: 0, fontSize: "0.9rem", color: "var(--cams-text-muted)" }}>
                               {order.items.map((i: any) => (
-                                <li key={i.id} style={{ marginBottom: "2px" }}>
-                                  {i.quantity}× {i.menuItem.name}
-                                </li>
+                                <li key={i.id} style={{ marginBottom: "2px" }}>{i.quantity}× {i.menuItem.name}</li>
                               ))}
                             </ul>
                           </div>
                           <div style={{ textAlign: "right", flexShrink: 0, marginLeft: "24px" }}>
                             <div style={{ fontSize: "0.8rem", color: "var(--cams-text-muted)", marginBottom: "4px" }}>
-                              {new Date(order.createdAt).toLocaleDateString()} {new Date(order.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                              {new Date(order.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                             </div>
                             <div style={{ fontSize: "1.3rem", fontWeight: 700, marginBottom: "12px" }}>₹{order.totalAmount}</div>
                             {action && (
-                              <button
-                                onClick={() => handleStatusUpdate(order.id, action.next)}
-                                className="btn"
-                                style={{ padding: "8px 16px", background: action.color, color: "white", fontSize: "0.85rem" }}
-                              >
+                              <button onClick={() => handleStatusUpdate(order.id, action.next)} className="btn" style={{ padding: "8px 16px", background: action.color, color: "white", fontSize: "0.85rem" }}>
                                 {action.label}
                               </button>
                             )}
@@ -329,43 +446,42 @@ export default function ShopkeeperDashboard() {
                       );
                     })}
                   </div>
-                </div>
-              )}
 
-              {/* ─── KITCHEN TAB ─── */}
-              {activeTab === "KITCHEN" && (
-                <div>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
-                    <h2 style={{color: "var(--cams-danger)", fontSize: "2rem"}}>Kitchen Queue</h2>
-                    <span className="badge badge-warning" style={{fontSize: "1rem"}}>Live Mode Active</span>
-                  </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: "24px" }}>
-                    {orders.filter((o) => o.status === 'PENDING').map((order) => (
-                      <div key={order.id} className="card" style={{ border: "2px solid var(--cams-warning)" }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "16px" }}>
-                          <h3 style={{ margin: 0, fontSize: "1.5rem" }}>#{order.id.slice(0, 4)}</h3>
-                          <span style={{ fontSize: "1.2rem", fontWeight: "bold" }}>{new Date(order.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
-                        </div>
-                        <ul style={{ listStyle: "none", padding: 0, fontSize: "1.2rem", fontWeight: 500, marginBottom: "24px" }}>
-                          {order.items.map((i: any) => (
-                            <li key={i.id} style={{ marginBottom: "8px", borderBottom: "1px dashed #eee", paddingBottom: "8px" }}>
-                              {i.quantity}× <span style={{color: "var(--cams-primary)"}}>{i.menuItem.name}</span>
-                            </li>
-                          ))}
-                        </ul>
-                        <button
-                          onClick={() => handleStatusUpdate(order.id, 'READY')}
-                          className="btn"
-                          style={{ padding: "16px", background: "var(--cams-success)", color: "white", width: "100%", fontSize: "1.2rem", fontWeight: "bold" }}
-                        >
-                          Mark Ready
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+                    <h2>Completed Orders</h2>
+                    <div style={{ display: "flex", gap: "8px" }}>
+                      {(["today", "week", "month", "all"] as const).map(f => (
+                        <button key={f} onClick={() => setOrderFilter(f)} className="btn" style={{ padding: "4px 12px", fontSize: "0.8rem", background: orderFilter === f ? "var(--cams-primary)" : "transparent", color: orderFilter === f ? "white" : "var(--cams-text-muted)", border: "1px solid var(--cams-border)", borderRadius: "6px" }}>
+                          {f === 'today' ? 'Today' : f === 'week' ? 'This Week' : f === 'month' ? 'This Month' : 'All Time'}
                         </button>
+                      ))}
+                    </div>
+                  </div>
+                  {completedOrders.length === 0 && <div className="card" style={{color: "var(--cams-text-muted)"}}>No completed orders for this period.</div>}
+                  <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                    {completedOrders.map((order) => (
+                      <div key={order.id} className="card" style={{ display: "flex", justifyContent: "space-between", opacity: 0.8 }}>
+                        <div>
+                          <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "8px" }}>
+                            <h3 style={{ margin: 0, fontSize: "1rem" }}>Order #{order.id.slice(0, 8)}</h3>
+                            <span className="badge badge-neutral">Completed</span>
+                          </div>
+                          <div style={{ fontSize: "0.85rem", color: "var(--cams-text-muted)" }}>
+                            <strong>{order.customer.name}</strong> — {order.items.map((i: any) => `${i.quantity}× ${i.menuItem.name}`).join(", ")}
+                          </div>
+                        </div>
+                        <div style={{ textAlign: "right", flexShrink: 0 }}>
+                          <div style={{ fontSize: "0.8rem", color: "var(--cams-text-muted)", marginBottom: "4px" }}>
+                            {new Date(order.createdAt).toLocaleDateString()} {new Date(order.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                          </div>
+                          <div style={{ fontSize: "1.2rem", fontWeight: 700 }}>₹{order.totalAmount}</div>
+                        </div>
                       </div>
                     ))}
-                    {orders.filter((o) => o.status === 'PENDING').length === 0 && <h3 style={{color: "var(--cams-text-muted)"}}>No pending orders. Good job!</h3>}
                   </div>
                 </div>
-              )}
+                );
+              })()}
 
               {/* ─── MENU TAB ─── */}
               {activeTab === "MENU" && (
@@ -399,7 +515,7 @@ export default function ShopkeeperDashboard() {
                                     try {
                                       await api.delete(`/menu/items/${item.id}`);
                                       fetchData();
-                                    } catch (e) { alert("Failed: " + getErrorMessage(e)) }
+                                    } catch (e) { toast.error("Failed: " + getErrorMessage(e)) }
                                   }
                                 }} />
                               </div>

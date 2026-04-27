@@ -6,12 +6,14 @@ import { Trash2, ShoppingBag } from "lucide-react";
 import { useRouter } from "next/navigation";
 import QuantityPill from "../../components/QuantityPill";
 import Skeleton from "../../components/Skeleton";
+import { useToast } from "../../components/Toast";
 
 export default function CartPage() {
   const router = useRouter();
   const [cart, setCart] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [checkingOut, setCheckingOut] = useState(false);
+  const toast = useToast();
 
   useEffect(() => {
     fetchCart();
@@ -52,7 +54,7 @@ export default function CartPage() {
       const res = await api.post("/orders/checkout");
       router.push(`/orders/confirmation?id=${res.data.order.id}`); // Kick them to success screen
     } catch (err) {
-      alert(`Checkout Failed: ${getErrorMessage(err)}`);
+      toast.error(`Checkout Failed: ${getErrorMessage(err)}`);
     } finally {
       setCheckingOut(false);
     }
@@ -115,7 +117,12 @@ export default function CartPage() {
                 </div>
 
                 <button 
-                  onClick={() => syncCartState(item.id, 0)} 
+                  onClick={async () => {
+                    try {
+                      await api.delete(`/cart/items/${item.id}`);
+                      syncCartState(item.id, 0);
+                    } catch (e) { toast.error("Failed to remove: " + getErrorMessage(e)); }
+                  }} 
                   className="btn btn-danger" style={{ padding: "8px" }}>
                   <Trash2 size={18} />
                 </button>

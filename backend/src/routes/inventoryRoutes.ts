@@ -5,11 +5,11 @@ import { requireShopkeeper } from '../middlewares/roleGuard';
 
 const router = Router();
 
-// Entire router is strictly for Shopkeepers
-router.use(authenticate);
-router.use(requireShopkeeper);
+// Guard endpoints that require shopkeeper access
+router.get('/', authenticate, requireShopkeeper, (req, res, next) => { InventoryController.getAllStock(req, res).catch(next); });
+router.patch('/:menuItemId', authenticate, requireShopkeeper, (req, res, next) => { InventoryController.updateStock(req, res).catch(next); });
 
-router.get('/', (req, res, next) => { InventoryController.getAllStock(req, res).catch(next); });
-router.patch('/:menuItemId', (req, res, next) => { InventoryController.updateStock(req, res).catch(next); });
+// Public SSE stream for live inventory updates
+router.get('/stream', (req, res, next) => { InventoryController.streamLiveInventory(req, res).catch(next); });
 
 export default router;

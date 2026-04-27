@@ -49,8 +49,9 @@ export class ShopkeeperConsoleAlertObserver implements IStockObserver {
 // -------------------------------------------------------------
 
 export interface OrderEvent {
-  type: 'ORDER_PLACED' | 'STATUS_CHANGED';
-  order: any;
+  type: 'ORDER_PLACED' | 'STATUS_CHANGED' | 'STOCK_UPDATED';
+  order?: any;
+  item?: any;
 }
 
 export interface IOrderObserver {
@@ -113,3 +114,34 @@ export class DashboardUpdater implements IOrderObserver {
 }
 
 export const liveDashboardUpdater = new DashboardUpdater();
+
+// -------------------------------------------------------------
+// PUBLIC INVENTORY UPDATER OBSERVER (SSE for Customers)
+// -------------------------------------------------------------
+
+export class PublicInventoryUpdater implements IOrderObserver {
+  private clients: Response[] = [];
+
+  constructor() {
+    OrderEventEmitter.getInstance().subscribe(this);
+  }
+
+  public addClient(res: Response) {
+    this.clients.push(res);
+    res.on('close', () => {
+      this.clients = this.clients.filter(c => c !== res);
+    });
+  }
+
+  onOrderUpdate(event: OrderEvent): void {
+    // Only send STOCK_UPDATED to public clients to avoid leaking order data
+    if (event.type === 'STOCK_UPDATED') {
+      const dataString = `data: ${JSON.stringify(event)}\n\n`;
+      this.clients.forEach(client => {
+        client.write(dataString);
+      });
+    }
+  }
+}
+
+export const liveInventoryUpdater = new PublicInventoryUpdater();

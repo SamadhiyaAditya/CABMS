@@ -338,3 +338,85 @@ a {
   background: var(--cams-surface-layered);
   opacity: 0.7;
 }
+
+/* Toast Notification Animation */
+@keyframes toastSlideIn {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+/* ─── Mobile Responsiveness ────────────────────────────────── */
+
+/* Tablet breakpoint */
+@media (max-width: 900px) {
+  .container {
+    padding: 0 16px;
+  }
+}
+
+/* Mobile breakpoint */
+@media (max-width: 768px) {
+  /* Navbar stacks vertically on small screens */
+  .navbar-inner {
+    flex-direction: column;
+    gap: 12px;
+    text-align: center;
+  }
+
+  .navbar-logo {
+    font-size: 1.2rem;
+  }
+
+  /* Cards need less padding on mobile */
+  .card {
+    padding: 16px;
+  }
+
+  /* Forms fill available width */
+  .form-input {
+    font-size: 16px; /* Prevents iOS zoom on focus */
+  }
+
+  /* Badges wrap nicely */
+  .badge {
+    font-size: 0.65rem;
+    padding: 3px 8px;
+  }
+
+  /* Toast slides in from bottom on mobile */
+  @keyframes toastSlideIn {
+    from { transform: translateY(100%); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+
+  /* Quantity pill stays compact */
+  .qty-pill {
+    min-width: 80px;
+    height: 32px;
+  }
+
+  .qty-btn {
+    width: 28px;
+    font-size: 1rem;
+  }
+}
+
+/* Small phone breakpoint */
+@media (max-width: 480px) {
+  h1 {
+    font-size: 1.5rem !important;
+  }
+
+  h2 {
+    font-size: 1.2rem !important;
+  }
+
+  .btn {
+    padding: 10px 16px;
+    font-size: 0.85rem;
+  }
+
+  .container {
+    padding: 0 12px;
+  }
+}

@@ -6,7 +6,7 @@
  */
 import DatabaseConnection from '../config/DatabaseConnection';
 import { NotFoundError, ValidationError } from '../utils/errors';
-import { IStockSubject, IStockObserver, LowStockEvent } from '../patterns/OrderObserver';
+import { IStockSubject, IStockObserver, LowStockEvent, OrderEventEmitter } from '../patterns/OrderObserver';
 
 class InventoryService implements IStockSubject {
   private prisma = DatabaseConnection.getInstance();
@@ -87,6 +87,16 @@ class InventoryService implements IStockSubject {
         data: { isAvailable: true }
       });
     }
+
+    // Fire generic SSE event for Live Stock Tracking across all clients
+    OrderEventEmitter.getInstance().notify({
+      type: 'STOCK_UPDATED',
+      item: {
+        id: updatedItem.menuItemId,
+        stockCount: updatedItem.stockCount,
+        isAvailable: updatedItem.stockCount > 0
+      }
+    });
 
     return updatedItem;
   }

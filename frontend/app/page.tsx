@@ -14,6 +14,7 @@ export default function Home() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [role, setRole] = useState<"CUSTOMER" | "SHOPKEEPER">("CUSTOMER");
   
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -32,7 +33,7 @@ export default function Home() {
           name, 
           email, 
           password, 
-          role: "CUSTOMER" // Public registrations are customers by default
+          role, // Dynamic role from dropdown
         });
       }
       
@@ -66,7 +67,7 @@ export default function Home() {
       {/* Main Content */}
       <div className="container" style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "40px 24px" }}>
         
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "60px", alignItems: "center" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))", gap: "40px", alignItems: "center", maxWidth: "900px", width: "100%" }}>
           
           {/* Hero Section */}
           <div style={{ paddingRight: "40px" }}>
@@ -94,6 +95,7 @@ export default function Home() {
 
             <form onSubmit={handleAuth}>
               {!isLogin && (
+                <>
                 <div className="form-group">
                   <label className="form-label">Full Name</label>
                   <input 
@@ -105,6 +107,18 @@ export default function Home() {
                     required={!isLogin} 
                   />
                 </div>
+                <div className="form-group">
+                  <label className="form-label">I am a</label>
+                  <select 
+                    className="form-input" 
+                    value={role} 
+                    onChange={(e) => setRole(e.target.value as "CUSTOMER" | "SHOPKEEPER")}
+                  >
+                    <option value="CUSTOMER">Customer — I want to order</option>
+                    <option value="SHOPKEEPER">Shopkeeper — I manage the shop</option>
+                  </select>
+                </div>
+                </>
               )}
               
               <div className="form-group">

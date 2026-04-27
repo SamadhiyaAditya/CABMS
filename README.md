@@ -17,6 +17,8 @@ CAMS is a two-panel web application that digitizes the ordering workflow at Chai
 | ORM          | Prisma (v5.20)                    |
 | Database     | PostgreSQL (Neon DB)              |
 | Auth         | JWT (role-based)                  |
+| Validation   | Zod v4                            |
+| Testing      | Jest + ts-jest                    |
 
 ---
 
@@ -26,30 +28,37 @@ Three-tier architecture:
 - **Business Logic**: Express REST API with service layer
 - **Data**: PostgreSQL via Prisma ORM
 
-See `/docs` and the root `CAMS_Planning_Document.md` for the full System Design document.
+See `/docs` for the full Planning Document and API Reference.
 See `/diagrams` for Class, Use Case, Sequence, and ER diagrams.
 
 ---
 
-## Design Patterns Used
-| Pattern         | Location                           |
-|-----------------|------------------------------------|
-| Singleton       | `src/config/DatabaseConnection.ts` |
-| Factory         | `src/patterns/UserFactory.ts`      |
-| Adapter         | `src/patterns/NotificationAdapter.ts`|
-| Composite       | `src/patterns/MenuComposite.ts`    |
-| Observer        | `src/patterns/OrderObserver.ts`    |
-| Strategy        | `src/patterns/ReportStrategy.ts`   |
-| Template Method | `src/patterns/OrderTemplate.ts`    |
+## Design Patterns Used (7/7)
+| #  | Pattern         | Location                            | Problem Solved                    |
+|----|-----------------|-------------------------------------|-----------------------------------|
+| 1  | Singleton       | `src/config/DatabaseConnection.ts`  | Single shared DB connection       |
+| 2  | Factory         | `src/patterns/UserFactory.ts`       | Role-based user creation          |
+| 3  | Adapter         | `src/patterns/NotificationAdapter.ts`| Pluggable notification channels  |
+| 4  | Composite       | `src/patterns/MenuComposite.ts`     | Uniform category/item traversal   |
+| 5  | Observer        | `src/patterns/OrderObserver.ts`     | Low-stock alerts + live dashboard |
+| 6  | Strategy        | `src/patterns/ReportStrategy.ts`    | Swappable report algorithms       |
+| 7  | Template Method | `src/patterns/OrderTemplate.ts`     | Fixed-step order processing       |
 
 ---
+
+## OOP Concepts Demonstrated
+- **Abstraction**: `User` base class hides auth details behind abstract methods
+- **Encapsulation**: `passwordHash` is private — accessible only via `getPasswordHash()`
+- **Inheritance**: `Customer` and `Shopkeeper` extend `User`
+- **Polymorphism**: `getPermissions()` returns different values based on role
+- **Interfaces**: `MenuComponent`, `IReportStrategy`, `INotificationService`, `IStockObserver`
 
 ## SOLID Principles
 - **S (Single Responsibility)**: Each service class handles exactly one domain responsibility.
 - **O (Open/Closed)**: New report types can cleanly extend `IReportStrategy` without modifying existing code.
 - **L (Liskov Substitution)**: Customer and Shopkeeper can securely be substituted for User anywhere needed.
-- **I (Interface Segregation)**: `IOrderable`, `IReviewable`, etc. are isolated.
-- **D (Dependency Inversion)**: Services depend directly on abstract interfaces rather than concrete class implementations.
+- **I (Interface Segregation)**: `INotificationService`, `IStockObserver`, `MenuComponent` are small and focused.
+- **D (Dependency Inversion)**: Services depend on abstract interfaces rather than concrete class implementations.
 
 ---
 
@@ -58,6 +67,7 @@ See `/diagrams` for Class, Use Case, Sequence, and ER diagrams.
 ### Prerequisites
 - Node.js v18+
 - npm or yarn
+- PostgreSQL database (Neon DB recommended)
 
 ### Steps
 1. Clone the repository
@@ -68,24 +78,29 @@ See `/diagrams` for Class, Use Case, Sequence, and ER diagrams.
 
 2. Install backend dependencies
    ```bash
-   npm install
+   cd backend && npm install
    ```
 
-3. Set up environment variables
-   Create `.env` file in the root based on `.env.example`:
+3. Install frontend dependencies
    ```bash
-   DATABASE_URL="postgresql://user:pass@ep-host.region.aws.neon.tech/dbname?sslmode=require"
-   JWT_SECRET="your-secret-key"
-   PORT=3001
-   FRONTEND_URL="http://localhost:3000"
+   cd frontend && npm install
    ```
 
-4. Run database migrations
+4. Set up environment variables
    ```bash
-   npx prisma migrate dev --name init
+   # Backend — copy example and fill in your DATABASE_URL
+   cp backend/.env.example backend/.env
+
+   # Frontend
+   echo "NEXT_PUBLIC_API_URL=http://localhost:3001" > frontend/.env.local
    ```
 
-5. Seed the database (optional)
+5. Run database migrations
+   ```bash
+   cd backend && npx prisma migrate dev --name init
+   ```
+
+6. Seed the database
    ```bash
    npx prisma db seed
    ```
@@ -96,23 +111,65 @@ See `/diagrams` for Class, Use Case, Sequence, and ER diagrams.
 
 **1. Start backend API:**
 ```bash
-npm run dev   # runs on port 3001
+cd backend && npm run dev   # runs on port 3001
 ```
 
 **2. Start frontend:**
-*(Frontend functionality inside `frontend/` is being actively developed as of Sprint 2).*
 ```bash
 cd frontend && npm run dev   # runs on port 3000
 ```
 
+**3. Run tests:**
+```bash
+cd backend && npm test   # 38 unit tests
+```
+
 Open `http://localhost:3000` in your browser.
-Register as a Customer to browse and order or as a Shopkeeper to securely access the admin panel.
+
+### Demo Credentials (from seed data)
+| Role        | Email                      | Password     |
+|-------------|----------------------------|-------------|
+| Shopkeeper  | `shopkeeper@chaiadda.com`  | `password123` |
+| Customer 1  | `test@customer.com`        | `password123` |
+| Customer 2  | `anant@college.edu`        | `password123` |
+
+---
+
+## Project Structure
+```
+CABMS/
+├── backend/
+│   ├── prisma/          # Schema + migrations + seed
+│   ├── src/
+│   │   ├── config/      # DatabaseConnection (Singleton), env
+│   │   ├── controllers/ # Thin HTTP handlers (7 modules)
+│   │   ├── middlewares/  # Auth, Role Guard, Error Handler
+│   │   ├── models/       # User class hierarchy (OOP)
+│   │   ├── patterns/     # 7 Design Patterns
+│   │   ├── routes/       # Express route definitions
+│   │   ├── services/     # Business logic layer
+│   │   ├── validators/   # Zod request validation
+│   │   ├── utils/        # Custom error hierarchy
+│   │   ├── __tests__/    # Jest unit tests
+│   │   ├── app.ts        # Express app configuration
+│   │   └── server.ts     # Entry point
+│   └── jest.config.js
+├── frontend/
+│   └── app/
+│       ├── (customer)/   # Menu, Cart, Orders, Profile pages
+│       ├── (shopkeeper)/ # Admin Dashboard
+│       ├── components/   # Reusable UI components
+│       └── lib/          # API client (Axios)
+├── diagrams/             # ER, Class, Use Case, Sequence PDFs
+├── docs/                 # Planning document + API reference
+└── README.md
+```
 
 ---
 
 ## Team
-Aditya Samadhiya
-Anant Pratap Singh
-Abhishek Tripathi
-Yash Raj
-Yash Yadav
+- Aditya Samadhiya
+- Anant Pratap Singh
+- Abhishek Tripathi
+- Yash Raj
+- Yash Yadav

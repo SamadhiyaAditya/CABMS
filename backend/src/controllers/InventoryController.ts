@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import InventoryService from '../services/InventoryService';
 import { updateInventorySchema } from '../validators/menuValidator';
 import { ValidationError } from '../utils/errors';
+import { liveInventoryUpdater } from '../patterns/OrderObserver';
 
 class InventoryController {
   /**
@@ -30,6 +31,22 @@ class InventoryController {
     );
 
     res.status(200).json({ success: true, inventory: result });
+  }
+
+  /**
+   * GET /inventory/stream
+   * Connects public clients to the live inventory stream.
+   */
+  async streamLiveInventory(req: Request, res: Response) {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+
+    // Send initial connected payload
+    res.write(`data: ${JSON.stringify({ message: 'connected' })}\n\n`);
+
+    // Add this response object to the public SSE clients array
+    liveInventoryUpdater.addClient(res);
   }
 }
 

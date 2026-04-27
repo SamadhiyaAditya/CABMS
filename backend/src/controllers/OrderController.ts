@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { CartCheckoutProcess } from '../services/OrderService';
 import DatabaseConnection from '../config/DatabaseConnection';
 import { ValidationError, NotFoundError } from '../utils/errors';
+import { updateOrderStatusSchema } from '../validators/orderValidator';
 
 class OrderController {
   private prisma = DatabaseConnection.getInstance();
@@ -58,17 +59,47 @@ class OrderController {
   }
 
   /**
+   * GET /orders/:id
+   * View a single order's details. Customer can view own orders, Shopkeeper can view any.
+   */
+  async getOrderById(req: Request, res: Response) {
+    const orderId = req.params.id as string;
+    const userId = req.user!.userId;
+    const role = req.user!.role;
+
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      include: {
+        customer: { select: { name: true, email: true } },
+        items: { include: { menuItem: { select: { name: true, imageUrl: true } } } }
+      }
+    });
+
+    if (!order) {
+      throw new NotFoundError('Order not found');
+    }
+
+    // Customers can only view their own orders
+    if (role === 'CUSTOMER' && order.customerId !== userId) {
+      throw new NotFoundError('Order not found');
+    }
+
+    res.status(200).json({ success: true, order });
+  }
+
+  /**
    * PATCH /orders/:id/status
    * Shopkeeper: Update order status (PENDING → READY → PICKED_UP)
    */
   async updateOrderStatus(req: Request, res: Response) {
     const id = req.params.id as string;
-    const status = req.body.status as string;
 
-    const validStatuses = ['PENDING', 'READY', 'PICKED_UP'];
-    if (!status || !validStatuses.includes(status)) {
-      throw new ValidationError(`Invalid status. Must be one of: ${validStatuses.join(', ')}`);
+    // Validate with zod schema
+    const parsed = updateOrderStatusSchema.safeParse(req.body);
+    if (!parsed.success) {
+      throw new ValidationError(parsed.error.issues.map((e: any) => e.message).join(', '));
     }
+    const status = parsed.data.status;
 
     // Verify order exists
     const order = await this.prisma.order.findUnique({ where: { id } });

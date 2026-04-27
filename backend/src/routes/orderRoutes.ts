@@ -14,6 +14,10 @@ router.get('/history', requireCustomer, (req, res, next) => { OrderController.ge
 // Shopkeeper routes — view all orders and update status
 router.get('/stream', requireShopkeeper, (req, res, next) => { OrderController.streamLiveOrders(req, res).catch(next); });
 router.get('/all', requireShopkeeper, (req, res, next) => { OrderController.getAllOrders(req, res).catch(next); });
+
+// Shared: View single order (customer sees own, shopkeeper sees any)
+router.get('/:id', (req, res, next) => { OrderController.getOrderById(req, res).catch(next); });
+
 router.patch('/:id/status', requireShopkeeper, (req, res, next) => { OrderController.updateOrderStatus(req, res).catch(next); });
 
 export default router;

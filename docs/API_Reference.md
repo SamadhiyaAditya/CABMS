@@ -30,8 +30,8 @@
 |--------|----------|------|-------------|
 | GET | `/cart` | Customer | View current cart |
 | POST | `/cart/items` | Customer | Add item to cart |
-| PUT | `/cart/items/:id` | Customer | Update cart item quantity |
-| DELETE | `/cart/items/:id` | Customer | Remove item from cart |
+| PATCH | `/cart/items/:cartItemId` | Customer | Update cart item quantity |
+| DELETE | `/cart/items/:cartItemId` | Customer | Remove item from cart |
 
 ## Order Module
 
@@ -50,6 +50,7 @@
 |--------|----------|------|-------------|
 | GET | `/inventory` | Shopkeeper | View inventory status of all items |
 | PATCH | `/inventory/:itemId` | Shopkeeper | Update stock count for an item |
+| GET | `/inventory/stream` | Public | SSE stream for live inventory updates |
 
 ## Reviews Module
 

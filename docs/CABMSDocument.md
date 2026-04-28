@@ -38,7 +38,7 @@ Beyond the academic submission, CAMS is designed to be pitched to the actual own
 | ORM | Prisma | Type-safe DB queries, auto-generated types from schema |
 | Database | PostgreSQL | Relational data, clean ER model, strong cardinality support |
 | Auth | JWT (JSON Web Tokens) | Stateless, role-based auth for Customer vs Shopkeeper |
-| Styling | Tailwind CSS | Rapid UI development with utility classes |
+| Styling | Vanilla CSS | Custom styling completely in globals.css for maximum control |
 
 ---
 
@@ -672,7 +672,12 @@ Register as Shopkeeper to access the admin panel.
 ---
 
 ## Team
-[Your Name] — Solo Project
+- Aditya Samadhiya
+- Anant Pratap Singh
+- Abhishek Tripathi
+- Yash Raj
+- Yash Yadav
+- Rohan Choudhary
 ```
 
 ---
@@ -1355,7 +1360,7 @@ router.post('/menu/items', authenticate, requireShopkeeper, menuController.addIt
 |-----------|--------|
 | Severity | High — demo looks empty and unprofessional |
 | Description | Demonstrating an empty system to an evaluator is a missed opportunity. A live demo with realistic Chai Adda menu items, a few placed orders, and varied stock levels takes 10 minutes to build and makes the entire project look production-ready. |
-| Fix | Create `prisma/seed.ts` with: 2–3 menu categories, 8–10 realistic menu items with prices matching the actual Chai Adda menu, 1 shopkeeper account, 2–3 customer accounts, a few orders in different statuses (PENDING, READY, PICKED_UP), some reviews. |
+| Fix | Create `prisma/seed.ts` with: 10 menu categories, 50+ realistic menu items matching the actual Chai Adda menu, 1 shopkeeper account, 2 customer accounts, a few orders in different statuses (PENDING, READY, PICKED_UP), some reviews. |
 | File | `prisma/seed.ts` |
 
 ### 17.3 Medium Risks (fix during Sprint 3–4)
@@ -1437,12 +1442,11 @@ These improvements go beyond the minimum submission requirements. They strengthe
 | Install | `npm install swagger-ui-express swagger-jsdoc @types/swagger-ui-express` |
 | File | `src/config/swagger.ts` |
 
-#### IMP-03 — Enum-driven Order Status with State Machine Logic
-
+#### IMP-03 — Enum-driven Order Status with Forward-only Transition Logic
 | Attribute | Detail |
 |-----------|--------|
 | What | Enforce valid order status transitions — PENDING can only go to READY, READY can only go to PICKED_UP. Reverse transitions should be rejected. |
-| Why | Currently nothing stops a shopkeeper from marking a PICKED_UP order back to PENDING. Adding transition validation shows State Machine understanding. |
+| Why | Currently nothing stops a shopkeeper from marking a PICKED_UP order back to PENDING. Adding transition validation shows robust business logic. |
 | File | `src/services/OrderService.ts` — updateStatus() method |
 
 ```typescript

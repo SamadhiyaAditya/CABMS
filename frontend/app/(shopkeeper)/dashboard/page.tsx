@@ -257,7 +257,9 @@ export default function ShopkeeperDashboard() {
           addNotification('order', msg);
           toast.success('🛎️ ' + msg);
           // Audio notification
-          try { new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbsGczIj2LzN/Rv1s+JDqCxNzfxmVCKDx/wtzfyG5LLT5+wNrf0HhTM0F8vtja0YBYOkR6u9bY0oZfQEZ3uNXW05Fk').then(a => a.play()).catch(() => {});
+          try {
+            const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbsGczIj2LzN/Rv1s+JDqCxNzfxmVCKDx/wtzfyG5LLT5+wNrf0HhTM0F8vtja0YBYOkR6u9bY0oZfQEZ3uNXW05Fk');
+            audio.play().catch(() => {});
           } catch (e) {}
         } else if (data.type === 'STATUS_CHANGED') {
           addNotification('status', `Order #${data.order?.id?.slice(0,8)} → ${data.order?.status}`);

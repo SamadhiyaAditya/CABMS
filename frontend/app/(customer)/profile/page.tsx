@@ -171,35 +171,37 @@ export default function ProfilePage() {
         {filteredOrders.length === 0 ? (
           <div style={{ textAlign: "center", padding: "32px", color: "var(--cams-text-muted)" }}>No orders for this period.</div>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-            {filteredOrders.slice(0, ordersVisible).map((order: any) => (
-              <Link key={order.id} href={`/orders/${order.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", background: "var(--cams-surface-layered)", borderRadius: "var(--radius-md)", cursor: "pointer", transition: "transform 0.15s" }}>
-                  <div>
-                    <div style={{ fontWeight: 600, marginBottom: "4px" }}>Order #{order.id.slice(0, 8)}</div>
-                    <div style={{ fontSize: "0.8rem", color: "var(--cams-text-muted)" }}>
-                      {order.items.map((i: any) => `${i.quantity}× ${i.menuItem.name}`).join(", ")}
+          <>
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+              {filteredOrders.slice(0, ordersVisible).map((order: any) => (
+                <Link key={order.id} href={`/orders/${order.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", background: "var(--cams-surface-layered)", borderRadius: "var(--radius-md)", cursor: "pointer", transition: "transform 0.15s" }}>
+                    <div>
+                      <div style={{ fontWeight: 600, marginBottom: "4px" }}>Order #{order.id.slice(0, 8)}</div>
+                      <div style={{ fontSize: "0.8rem", color: "var(--cams-text-muted)" }}>
+                        {order.items.map((i: any) => `${i.quantity}× ${i.menuItem.name}`).join(", ")}
+                      </div>
+                    </div>
+                    <div style={{ textAlign: "right" }}>
+                      <div style={{ fontWeight: 700 }}>₹{order.totalAmount}</div>
+                      <div style={{ fontSize: "0.75rem", color: "var(--cams-text-muted)" }}>
+                        {new Date(order.createdAt).toLocaleDateString()}
+                      </div>
                     </div>
                   </div>
-                  <div style={{ textAlign: "right" }}>
-                    <div style={{ fontWeight: 700 }}>₹{order.totalAmount}</div>
-                    <div style={{ fontSize: "0.75rem", color: "var(--cams-text-muted)" }}>
-                      {new Date(order.createdAt).toLocaleDateString()}
-                    </div>
-                  </div>
-                </div>
-              </Link>
-            ))}
-          </div>
-          {ordersVisible < filteredOrders.length && (
-            <button 
-              onClick={() => setOrdersVisible(prev => prev + 5)} 
-              className="btn btn-outline" 
-              style={{ width: "100%", marginTop: "12px" }}
-            >
-              Load More ({filteredOrders.length - ordersVisible} remaining)
-            </button>
-          )}
+                </Link>
+              ))}
+            </div>
+            {ordersVisible < filteredOrders.length && (
+              <button 
+                onClick={() => setOrdersVisible(prev => prev + 5)} 
+                className="btn btn-outline" 
+                style={{ width: "100%", marginTop: "12px" }}
+              >
+                Load More ({filteredOrders.length - ordersVisible} remaining)
+              </button>
+            )}
+          </>
         )}
       </div>
     </div>

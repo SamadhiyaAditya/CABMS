@@ -5,7 +5,22 @@
 ---
 
 ## Project Overview
-CAMS is a two-panel web application that digitizes the ordering workflow at Chai Adda. Customers browse the menu, place orders, and track status digitally. The shopkeeper manages menu items, inventory, and processes orders through a dedicated admin panel. Orders are paid and picked up physically at the shop — CAMS handles everything before and after that moment.
+CAMS is a two-panel web application that digitizes the ordering workflow at Chai Adda. Customers browse the menu, place orders, and track status digitally. The shopkeeper manages menu items, inventory, and processes orders through a dedicated admin panel.
+
+### 🚀 Key Features
+
+#### 👤 Customer Panel (Zomato/Swiggy Style)
+- **Smart Menu**: Categorized browsing with search, price/rating sorting, and real-time stock indicators.
+- **Interactive Cart**: Floating cart summary with a detailed bill breakdown.
+- **Order Tracking**: Visual status timeline (Placed → Preparing → Ready → Picked Up).
+- **Review System**: Rate and review items with instant UI updates.
+- **Profile & History**: Full order history with "Load More" pagination.
+
+#### 🏪 Shopkeeper Panel (Admin Dashboard)
+- **Live Order Stream**: Real-time order arrivals via SSE (Server-Sent Events) with **Audio Alerts**.
+- **Inventory Management**: One-click stock updates and automated low-stock warnings.
+- **Analytics & Reports**: Sales summaries, top-selling items, and inventory valuation reports (Strategy Pattern).
+- **Global Search**: Instantly find any order or menu item by name or ID.
 
 ---
 
@@ -43,6 +58,12 @@ See `/diagrams` for Class, Use Case, Sequence, and ER diagrams.
 | 5  | Observer        | `OrderObserver`, `InventoryService` | SSE Updates & Low-stock alerts    |
 | 6  | Strategy        | `ReportStrategy` (Sales/Inventory)  | Swappable analytics algorithms    |
 | 7  | Template Method | `OrderTemplate` (Checkout workflow) | Fixed-step transactional logic    |
+
+### 🧩 Advanced Pattern Highlights
+- **Observer Pattern**: Implemented as a multi-stream event system. It manages both real-time order dashboard pushes (SSE) and critical low-stock inventory alerts independently.
+- **Strategy Pattern**: Powers the Analytics Engine. It encapsulates complex report generation algorithms (Sales, Inventory, Popularity) into interchangeable strategies, adhering strictly to the **Open/Closed Principle**.
+- **Template Method**: Enforces a rigid 5-step transactional pipeline (Validate → Reserve → Create → Notify) ensuring data integrity during high-concurrency ordering.
+
 
 > **Note:** Patterns like **Observer**, **Adapter**, and **Singleton** are reused across multiple modules (Menu, Order, Inventory) to demonstrate consistent architectural design.
 

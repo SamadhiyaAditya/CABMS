@@ -1,4 +1,4 @@
-# ☕ CAMS — Chai Adda Management System
+# CAMS — Chai Adda Management System
 
 **System Design & Engineering — Project Planning Document**
 **Subject:** System Design and System Engineering
@@ -561,7 +561,7 @@ CAMS follows the Agile-inspired iterative SDLC model, structured into 4 phases a
 Copy this into your repository README.md:
 
 ```markdown
-# ☕ CAMS — Chai Adda Management System
+# CAMS — Chai Adda Management System
 
 > A digital ordering and management system for Chai Adda,
 > our college campus shop — built for the System Design &

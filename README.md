@@ -1,4 +1,4 @@
-# ☕ CAMS — Chai Adda Management System
+# CAMS — Chai Adda Management System
 
 > A digital ordering and management system for Chai Adda, our college campus shop — built for the System Design & System Engineering course.
 

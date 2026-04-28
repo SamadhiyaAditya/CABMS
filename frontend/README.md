@@ -1,4 +1,4 @@
-# 🎨 Frontend Directory Architecture
+# Frontend Directory Architecture
 
 Welcome to the Next.js `app` router! 
 

@@ -1,4 +1,4 @@
-# ☕ CAMS — API Endpoint Reference
+# CAMS — API Endpoint Reference
 
 > Base URL: `http://localhost:3001`
 > Auth: JWT Bearer Token in `Authorization` header

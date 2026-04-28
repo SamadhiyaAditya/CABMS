@@ -36,13 +36,15 @@ See `/diagrams` for Class, Use Case, Sequence, and ER diagrams.
 ## Design Patterns Used (7/7)
 | #  | Pattern         | Location                            | Problem Solved                    |
 |----|-----------------|-------------------------------------|-----------------------------------|
-| 1  | Singleton       | `src/config/DatabaseConnection.ts`  | Single shared DB connection       |
-| 2  | Factory         | `src/patterns/UserFactory.ts`       | Role-based user creation          |
-| 3  | Adapter         | `src/patterns/NotificationAdapter.ts`| Pluggable notification channels  |
-| 4  | Composite       | `src/patterns/MenuComposite.ts`     | Uniform category/item traversal   |
-| 5  | Observer        | `src/patterns/OrderObserver.ts`     | Low-stock alerts + live dashboard |
-| 6  | Strategy        | `src/patterns/ReportStrategy.ts`    | Swappable report algorithms       |
-| 7  | Template Method | `src/patterns/OrderTemplate.ts`     | Fixed-step order processing       |
+| 1  | Singleton       | `DatabaseConnection`, `Service Classes` | Shared state & resource efficiency |
+| 2  | Factory         | `UserFactory`                       | Role-based object creation        |
+| 3  | Adapter         | `NotificationAdapter` (In-App/Email)| Pluggable channel support         |
+| 4  | Composite       | `MenuComposite` (Category/Item)     | Uniform tree traversal            |
+| 5  | Observer        | `OrderObserver`, `InventoryService` | SSE Updates & Low-stock alerts    |
+| 6  | Strategy        | `ReportStrategy` (Sales/Inventory)  | Swappable analytics algorithms    |
+| 7  | Template Method | `OrderTemplate` (Checkout workflow) | Fixed-step transactional logic    |
+
+> **Note:** Patterns like **Observer**, **Adapter**, and **Singleton** are reused across multiple modules (Menu, Order, Inventory) to demonstrate consistent architectural design.
 
 ---
 

@@ -237,13 +237,13 @@ The same pattern can appear in multiple modules when it solves the same type of 
 
 | Pattern | Primary Usage | Additional Reuse | Justification for Reuse |
 |---------|--------------|-------------------|------------------------|
-| Singleton | DatabaseConnection (Prisma Client) | ConfigManager (env vars + app settings) | App config should also be loaded once and shared — same problem as DB connection |
-| Factory | UserFactory (Customer / Shopkeeper) | — | Single usage; only one polymorphic creation point |
-| Adapter | InAppNotificationAdapter | EmailAdapter (same interface, different channel) | Multiple notification channels = multiple adapters. The whole point of Adapter is swappability |
-| Composite | MenuCategory + MenuItem (MenuComponent) | — | Single usage; only the menu has a tree structure |
-| Observer | OrderEventEmitter → CustomerNotifier, InventoryUpdater | InventoryEventEmitter → LowStockNotifier (alerts shopkeeper when stock < threshold) | Inventory stock changes are a separate event stream from order events — decouples stock alerts from order processing |
-| Strategy | ReportStrategy (Daily, Weekly, TopItems) | MenuSortStrategy (sort menu by price, by name, by popularity) | Customer-facing menu needs sortable views — same swap-algorithm-at-runtime problem |
-| Template Method | OrderProcessor (validate → reserve → create → notify) | — | Single usage; only order processing has a fixed-step pipeline |
+| Singleton | `DatabaseConnection` (Prisma Client) | **Service Classes** (`OrderService`, `InventoryService`, etc.) | Ensures every request uses the same instance of business logic handlers — essential for shared state like observers. |
+| Factory | `UserFactory` (Customer / Shopkeeper) | — | Encapsulates the complex role-based object construction logic. |
+| Adapter | `InAppNotificationAdapter` | `EmailAdapter` | Allows the system to support multiple communication channels (Email/In-App) through the same interface. |
+| Composite | `MenuCategory` + `MenuItem` | — | Treats a single item and a collection of items (Category) as the same type for uniform traversal. |
+| Observer | `OrderEventEmitter` (Live Updates) | `InventoryService` (Low Stock Alerts) | Decouples both order processing and inventory management from their respective UI/Alert side effects. |
+| Strategy | `ReportStrategy` (Sales/Inventory) | — | Allows the Shopkeeper to switch between different analytics algorithms at runtime. |
+| Template Method | `OrderTemplate` (Checkout workflow) | — | Enforces a consistent step-by-step algorithm (Validate → Reserve → Create → Notify) across the system. |
 
 ### Pattern 1 — Singleton
 

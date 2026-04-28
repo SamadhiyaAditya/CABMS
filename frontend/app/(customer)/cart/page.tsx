@@ -2,11 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { api, getErrorMessage } from "../../lib/api";
-import { Trash2, ShoppingBag } from "lucide-react";
+import { Trash2, ShoppingBag, Coffee, ArrowLeft } from "lucide-react";
 import { useRouter } from "next/navigation";
 import QuantityPill from "../../components/QuantityPill";
 import Skeleton from "../../components/Skeleton";
 import { useToast } from "../../components/Toast";
+import Link from "next/link";
 
 export default function CartPage() {
   const router = useRouter();
@@ -80,10 +81,12 @@ export default function CartPage() {
 
       {!cart || cart.items.length === 0 ? (
         <div className="card" style={{ textAlign: "center", padding: "60px 20px" }}>
-          <h2>Your cart is entirely empty!</h2>
-          <button className="btn btn-primary" onClick={() => router.push("/menu")} style={{ marginTop: "20px" }}>
+          <Coffee size={56} style={{ color: "var(--cams-primary)", opacity: 0.25, marginBottom: "16px" }} />
+          <h2 style={{ marginBottom: "8px" }}>Your cart is empty</h2>
+          <p style={{ color: "var(--cams-text-muted)", marginBottom: "24px" }}>Looks like you haven't added any items yet.</p>
+          <Link href="/menu" className="btn btn-primary" style={{ display: "inline-flex" }}>
             Browse Menu
-          </button>
+          </Link>
         </div>
       ) : (
         <div className="card" style={{ padding: 0, overflow: "hidden" }}>
@@ -108,7 +111,7 @@ export default function CartPage() {
                     initialQty={item.quantity}
                     stockCount={item.stockCount}
                     onUpdate={(qty) => syncCartState(item.id, qty)}
-                    onError={(msg) => alert(msg)}
+                    onError={(msg) => toast.error(msg)}
                   />
                 </div>
 
@@ -131,19 +134,32 @@ export default function CartPage() {
             </div>
           ))}
 
+          {/* Bill Summary */}
+          <div style={{ padding: "20px 24px", borderBottom: "1px solid var(--cams-border)", background: "var(--cams-surface)" }}>
+            <h3 style={{ fontSize: "0.9rem", color: "var(--cams-text-muted)", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "12px" }}>Bill Summary</h3>
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px", fontSize: "0.9rem" }}>
+              <span style={{ color: "var(--cams-text-muted)" }}>Items ({cart.items.reduce((s: number, i: any) => s + i.quantity, 0)})</span>
+              <span>₹{cart.totalAmount}</span>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", paddingTop: "8px", borderTop: "1px dashed var(--cams-border)", fontWeight: 700, fontSize: "1.05rem" }}>
+              <span>To Pay</span>
+              <span style={{ color: "var(--cams-primary)" }}>₹{cart.totalAmount}</span>
+            </div>
+          </div>
+
           {/* Cart Footer */}
-          <div style={{ padding: "32px 24px", background: "var(--cams-surface-layered)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div style={{ padding: "24px", background: "var(--cams-surface-layered)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <div>
-              <div style={{ fontSize: "0.9rem", color: "var(--cams-text-muted)", marginBottom: "4px" }}>Total Amount</div>
-              <div style={{ fontSize: "2rem", fontWeight: 700, color: "var(--cams-primary)" }}>₹{cart.totalAmount}</div>
+              <div style={{ fontSize: "0.85rem", color: "var(--cams-text-muted)", marginBottom: "4px" }}>Total Amount</div>
+              <div style={{ fontSize: "1.8rem", fontWeight: 700, color: "var(--cams-primary)" }}>₹{cart.totalAmount}</div>
             </div>
             <button 
               className="btn btn-primary" 
-              style={{ fontSize: "1.1rem", padding: "16px 40px" }}
+              style={{ fontSize: "1rem", padding: "14px 36px" }}
               onClick={handleCheckout}
               disabled={checkingOut}
             >
-              {checkingOut ? 'Processing...' : 'Confirm Order'}
+              {checkingOut ? 'Processing...' : 'Place Order'}
             </button>
           </div>
 

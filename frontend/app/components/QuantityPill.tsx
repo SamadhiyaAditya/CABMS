@@ -77,21 +77,25 @@ export default function QuantityPill({
       } finally {
         setIsSyncing(false);
       }
-    }, 600); // 600ms debounce for premium feel
+    }, 400); // 400ms debounce for snappy, reliable sync
 
     return () => clearTimeout(timer);
   }, [qty]);
 
   const handleIncrement = () => {
+    if (isSyncing) return; // Prevent rapid clicks while syncing
     if (qty < stockCount) {
       const next = qty + 1;
       setQty(next);
       // Immediately notify parent of the "optimistic" change
       onUpdate(next, cartId);
+    } else {
+      if (onError) onError(`Only ${stockCount} units available in stock.`);
     }
   };
 
   const handleDecrement = () => {
+    if (isSyncing) return; // Prevent rapid clicks while syncing
     if (qty > 0) {
       const next = qty - 1;
       setQty(next);
@@ -102,7 +106,7 @@ export default function QuantityPill({
 
   if (qty === 0) {
     return (
-      <button className="add-pill" onClick={handleIncrement}>
+      <button className="add-pill" onClick={handleIncrement} disabled={isSyncing}>
         ADD <span className="add-pill-plus">+</span>
       </button>
     );
@@ -110,9 +114,9 @@ export default function QuantityPill({
 
   return (
     <div className={`qty-pill ${isSyncing ? "syncing" : ""}`}>
-      <button className="qty-btn" onClick={handleDecrement}>−</button>
+      <button className="qty-btn" onClick={handleDecrement} disabled={isSyncing}>−</button>
       <span className="qty-count">{qty}</span>
-      <button className="qty-btn" onClick={handleIncrement} disabled={qty >= stockCount}>+</button>
+      <button className="qty-btn" onClick={handleIncrement} disabled={isSyncing || qty >= stockCount}>+</button>
     </div>
   );
 }

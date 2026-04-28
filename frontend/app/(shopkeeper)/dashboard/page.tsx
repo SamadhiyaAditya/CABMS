@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { api, getErrorMessage } from "../../lib/api";
-import { Coffee, Tag, Plus, AlertTriangle, LogOut, BarChart3, X, Save, ClipboardList, Bell } from "lucide-react";
+import { Coffee, Tag, Plus, AlertTriangle, LogOut, BarChart3, X, Save, ClipboardList, Bell, Search } from "lucide-react";
 import { useToast } from "../../components/Toast";
 import Cookies from "js-cookie";
 import { useRouter } from "next/navigation";
@@ -165,6 +165,11 @@ export default function ShopkeeperDashboard() {
     setNotifications((prev) => [{ id: Date.now() + Math.random(), type, message, time: new Date() }, ...prev].slice(0, 50));
   };
 
+  // Search & Pagination state
+  const [orderSearch, setOrderSearch] = useState("");
+  const [inventorySearch, setInventorySearch] = useState("");
+  const [completedVisible, setCompletedVisible] = useState(10);
+
   // Modals state
   const [showCatModal, setShowCatModal] = useState(false);
   const [showItemModal, setShowItemModal] = useState<string | null>(null);
@@ -251,6 +256,9 @@ export default function ShopkeeperDashboard() {
           const msg = `New order from ${data.order?.customer?.name || 'a customer'} — ₹${data.order?.totalAmount || '?'}`;
           addNotification('order', msg);
           toast.success('🛎️ ' + msg);
+          // Audio notification
+          try { new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbsGczIj2LzN/Rv1s+JDqCxNzfxmVCKDx/wtzfyG5LLT5+wNrf0HhTM0F8vtja0YBYOkR6u9bY0oZfQEZ3uNXW05Fk').then(a => a.play()).catch(() => {});
+          } catch (e) {}
         } else if (data.type === 'STATUS_CHANGED') {
           addNotification('status', `Order #${data.order?.id?.slice(0,8)} → ${data.order?.status}`);
         }
@@ -272,7 +280,8 @@ export default function ShopkeeperDashboard() {
   const handleStatusUpdate = async (orderId: string, newStatus: string) => {
     try {
       await api.patch(`/orders/${orderId}/status`, { status: newStatus });
-      fetchData();
+      const ordersRes = await api.get("/orders/all");
+      setOrders(ordersRes.data.orders);
     } catch (err) {
       toast.error("Failed: " + getErrorMessage(err));
     }
@@ -406,10 +415,25 @@ export default function ShopkeeperDashboard() {
                   if (orderFilter === 'month') return (now.getTime() - date.getTime()) < 30 * 86400000;
                   return true;
                 };
-                const liveOrders = orders.filter(o => o.status === 'PENDING' || o.status === 'READY');
-                const completedOrders = orders.filter(o => o.status === 'PICKED_UP').filter(o => filterDate(o.createdAt));
+                const liveOrders = orders.filter(o => o.status === 'PENDING' || o.status === 'READY')
+                  .filter(o => !orderSearch || o.customer?.name?.toLowerCase().includes(orderSearch.toLowerCase()) || o.id.toLowerCase().includes(orderSearch.toLowerCase()));
+                const completedOrders = orders.filter(o => o.status === 'PICKED_UP').filter(o => filterDate(o.createdAt))
+                  .filter(o => !orderSearch || o.customer?.name?.toLowerCase().includes(orderSearch.toLowerCase()) || o.id.toLowerCase().includes(orderSearch.toLowerCase()));
                 return (
                 <div>
+                  {/* Order Search */}
+                  <div style={{ position: "relative", marginBottom: "20px", maxWidth: "320px" }}>
+                    <Search size={16} style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "var(--cams-text-muted)" }} />
+                    <input
+                      type="text"
+                      placeholder="Search by customer or order ID..."
+                      value={orderSearch}
+                      onChange={(e) => setOrderSearch(e.target.value)}
+                      className="form-input"
+                      style={{ paddingLeft: "36px", borderRadius: "100px", fontSize: "0.85rem", padding: "8px 12px 8px 36px" }}
+                    />
+                  </div>
+
                   <h2 style={{ marginBottom: "16px" }}>Live Orders</h2>
                   {liveOrders.length === 0 && <div className="card" style={{color: "var(--cams-text-muted)", marginBottom: "32px"}}>No active orders right now.</div>}
                   <div style={{ display: "flex", flexDirection: "column", gap: "16px", marginBottom: "32px" }}>
@@ -459,7 +483,7 @@ export default function ShopkeeperDashboard() {
                   </div>
                   {completedOrders.length === 0 && <div className="card" style={{color: "var(--cams-text-muted)"}}>No completed orders for this period.</div>}
                   <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                    {completedOrders.map((order) => (
+                    {completedOrders.slice(0, completedVisible).map((order) => (
                       <div key={order.id} className="card" style={{ display: "flex", justifyContent: "space-between", opacity: 0.8 }}>
                         <div>
                           <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "8px" }}>
@@ -479,6 +503,15 @@ export default function ShopkeeperDashboard() {
                       </div>
                     ))}
                   </div>
+                  {completedVisible < completedOrders.length && (
+                    <button
+                      onClick={() => setCompletedVisible(prev => prev + 10)}
+                      className="btn btn-outline"
+                      style={{ width: "100%", marginTop: "16px" }}
+                    >
+                      Load More ({completedOrders.length - completedVisible} remaining)
+                    </button>
+                  )}
                 </div>
                 );
               })()}
@@ -534,7 +567,20 @@ export default function ShopkeeperDashboard() {
               {/* ─── INVENTORY TAB ─── */}
               {activeTab === "INVENTORY" && (
                 <div className="card">
-                  <h2 style={{ marginBottom: "24px" }}>Stock Control</h2>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px", flexWrap: "wrap", gap: "12px" }}>
+                    <h2 style={{ margin: 0 }}>Stock Control</h2>
+                    <div style={{ position: "relative", width: "240px" }}>
+                      <Search size={14} style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", color: "var(--cams-text-muted)" }} />
+                      <input
+                        type="text"
+                        placeholder="Search items..."
+                        value={inventorySearch}
+                        onChange={(e) => setInventorySearch(e.target.value)}
+                        className="form-input"
+                        style={{ paddingLeft: "32px", borderRadius: "100px", fontSize: "0.85rem", padding: "6px 12px 6px 32px" }}
+                      />
+                    </div>
+                  </div>
                   <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
                     <thead>
                       <tr style={{ borderBottom: "2px solid var(--cams-border)", color: "var(--cams-text-muted)" }}>
@@ -544,7 +590,9 @@ export default function ShopkeeperDashboard() {
                       </tr>
                     </thead>
                     <tbody>
-                      {inventory.map((inv: any) => (
+                      {inventory
+                        .filter((inv: any) => !inventorySearch || inv.menuItem.name.toLowerCase().includes(inventorySearch.toLowerCase()) || inv.menuItem.category.name.toLowerCase().includes(inventorySearch.toLowerCase()))
+                        .map((inv: any) => (
                         <tr key={inv.id} style={{ borderBottom: "1px solid var(--cams-border)" }}>
                           <td style={{ padding: "16px 12px", fontWeight: 500 }}>{inv.menuItem.name} <span style={{fontSize:"0.8rem", color: "var(--cams-text-muted)", marginLeft:"8px"}}>{inv.menuItem.category.name}</span></td>
                           <td style={{ padding: "16px 12px", color: "var(--cams-text-muted)" }}>{inv.lowStockThreshold} units</td>

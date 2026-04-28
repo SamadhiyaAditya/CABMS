@@ -2,6 +2,7 @@ import { OrderTemplate } from '../patterns/OrderTemplate';
 import CartService from './CartService';
 import InventoryService from './InventoryService';
 import { InAppNotificationAdapter } from '../patterns/NotificationAdapter';
+import { OrderEventEmitter } from '../patterns/OrderObserver';
 import { ValidationError, StockError, NotFoundError } from '../utils/errors';
 
 export class CartCheckoutProcess extends OrderTemplate {
@@ -46,7 +47,7 @@ export class CartCheckoutProcess extends OrderTemplate {
   }
 
   protected async createOrderRecord(tx: any, customerId: string, cart: any): Promise<any> {
-    // Generate Order
+    // Generate Order — include customer name for SSE notifications
     const order = await tx.order.create({
       data: {
         customerId,
@@ -60,7 +61,10 @@ export class CartCheckoutProcess extends OrderTemplate {
           }))
         }
       },
-      include: { items: true }
+      include: {
+        items: { include: { menuItem: { select: { name: true } } } },
+        customer: { select: { name: true, email: true } }
+      }
     });
 
     return order;
@@ -86,9 +90,7 @@ export class CartCheckoutProcess extends OrderTemplate {
       InventoryService.updateStock(item.menuItemId).catch(()=>null);
     }
 
-    // SSE notification
-    import('../patterns/OrderObserver').then(({ OrderEventEmitter }) => {
-      OrderEventEmitter.getInstance().notify({ type: 'ORDER_PLACED', order: orderData });
-    });
+    // SSE notification — static import ensures reliability
+    OrderEventEmitter.getInstance().notify({ type: 'ORDER_PLACED', order: orderData });
   }
 }

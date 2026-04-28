@@ -3,6 +3,7 @@ import { CartCheckoutProcess } from '../services/OrderService';
 import DatabaseConnection from '../config/DatabaseConnection';
 import { ValidationError, NotFoundError } from '../utils/errors';
 import { updateOrderStatusSchema } from '../validators/orderValidator';
+import { OrderEventEmitter, liveDashboardUpdater } from '../patterns/OrderObserver';
 
 class OrderController {
   private prisma = DatabaseConnection.getInstance();
@@ -126,9 +127,7 @@ class OrderController {
     });
 
     // Notify Observers for real-time dashboard pushing
-    import('../patterns/OrderObserver').then(({ OrderEventEmitter }) => {
-      OrderEventEmitter.getInstance().notify({ type: 'STATUS_CHANGED', order: updated });
-    });
+    OrderEventEmitter.getInstance().notify({ type: 'STATUS_CHANGED', order: updated });
 
     res.status(200).json({ success: true, order: updated });
   }
@@ -145,9 +144,8 @@ class OrderController {
     // Initial connection established
     res.write('data: {"message": "connected"}\n\n');
 
-    import('../patterns/OrderObserver').then(({ liveDashboardUpdater }) => {
-      liveDashboardUpdater.addClient(res);
-    });
+    // Register this client for live SSE updates
+    liveDashboardUpdater.addClient(res);
   }
 }
 

@@ -15,6 +15,8 @@ export default function ProfilePage() {
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [orderFilter, setOrderFilter] = useState<"today" | "week" | "month" | "all">("all");
+  const [statsFilter, setStatsFilter] = useState<"week" | "month" | "all">("all");
+  const [ordersVisible, setOrdersVisible] = useState(5);
 
   useEffect(() => {
     fetchProfile();
@@ -45,7 +47,6 @@ export default function ProfilePage() {
       setOrders(allOrders);
       setProfile({
         ...profileRes.data.user,
-        stats: { totalOrders: completedOrders.length, totalSpent },
         favorites
       });
     } catch (err) {
@@ -72,6 +73,16 @@ export default function ProfilePage() {
   };
   const filteredOrders = orders.filter(o => filterDate(o.createdAt));
 
+  const filterStatsDate = (d: string) => {
+    const date = new Date(d);
+    if (statsFilter === 'week') return (now.getTime() - date.getTime()) < 7 * 86400000;
+    if (statsFilter === 'month') return (now.getTime() - date.getTime()) < 30 * 86400000;
+    return true;
+  };
+  const completedStatsOrders = orders.filter(o => o.status === 'PICKED_UP' && filterStatsDate(o.createdAt));
+  const dynamicTotalSpent = completedStatsOrders.reduce((sum: number, o: any) => sum + Number(o.totalAmount), 0);
+  const dynamicTotalOrders = completedStatsOrders.length;
+
   if (loading) {
     return <div style={{ display: "flex", justifyContent: "center", padding: "100px" }}><div className="spinner" style={{ borderColor: 'var(--cams-primary)' }}/></div>;
   }
@@ -85,14 +96,21 @@ export default function ProfilePage() {
       </h1>
 
       {/* Top Stats Row */}
+      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "12px", gap: "6px" }}>
+        {(["week", "month", "all"] as const).map(f => (
+          <button key={f} onClick={() => setStatsFilter(f)} className="btn" style={{ padding: "4px 10px", fontSize: "0.75rem", background: statsFilter === f ? "var(--cams-primary)" : "transparent", color: statsFilter === f ? "white" : "var(--cams-text-muted)", border: "1px solid var(--cams-border)", borderRadius: "6px" }}>
+            {f === 'week' ? 'This Week' : f === 'month' ? 'This Month' : 'All Time'}
+          </button>
+        ))}
+      </div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "16px", marginBottom: "32px" }}>
         <div className="card" style={{ textAlign: "center" }}>
           <div style={{ fontSize: "0.85rem", color: "var(--cams-text-muted)", marginBottom: "8px" }}>Total Orders</div>
-          <div style={{ fontSize: "2rem", fontWeight: 700, color: "var(--cams-primary)" }}>{profile.stats.totalOrders}</div>
+          <div style={{ fontSize: "2rem", fontWeight: 700, color: "var(--cams-primary)" }}>{dynamicTotalOrders}</div>
         </div>
         <div className="card" style={{ textAlign: "center" }}>
           <div style={{ fontSize: "0.85rem", color: "var(--cams-text-muted)", marginBottom: "8px" }}>Total Spent</div>
-          <div style={{ fontSize: "2rem", fontWeight: 700, color: "var(--cams-success)" }}>₹{profile.stats.totalSpent}</div>
+          <div style={{ fontSize: "2rem", fontWeight: 700, color: "var(--cams-success)" }}>₹{dynamicTotalSpent}</div>
         </div>
         <div className="card" style={{ textAlign: "center" }}>
           <div style={{ fontSize: "0.85rem", color: "var(--cams-text-muted)", marginBottom: "8px" }}>Member Since</div>
@@ -154,7 +172,7 @@ export default function ProfilePage() {
           <div style={{ textAlign: "center", padding: "32px", color: "var(--cams-text-muted)" }}>No orders for this period.</div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-            {filteredOrders.slice(0, 10).map((order: any) => (
+            {filteredOrders.slice(0, ordersVisible).map((order: any) => (
               <Link key={order.id} href={`/orders/${order.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", background: "var(--cams-surface-layered)", borderRadius: "var(--radius-md)", cursor: "pointer", transition: "transform 0.15s" }}>
                   <div>
@@ -173,6 +191,15 @@ export default function ProfilePage() {
               </Link>
             ))}
           </div>
+          {ordersVisible < filteredOrders.length && (
+            <button 
+              onClick={() => setOrdersVisible(prev => prev + 5)} 
+              className="btn btn-outline" 
+              style={{ width: "100%", marginTop: "12px" }}
+            >
+              Load More ({filteredOrders.length - ordersVisible} remaining)
+            </button>
+          )}
         )}
       </div>
     </div>

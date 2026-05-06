@@ -1,4 +1,4 @@
-# CAMS — Chai Adda Management System
+# ☕ CAMS — Chai Adda Management System
 
 **System Design & Engineering — Project Planning Document**
 **Subject:** System Design and System Engineering
@@ -38,7 +38,7 @@ Beyond the academic submission, CAMS is designed to be pitched to the actual own
 | ORM | Prisma | Type-safe DB queries, auto-generated types from schema |
 | Database | PostgreSQL | Relational data, clean ER model, strong cardinality support |
 | Auth | JWT (JSON Web Tokens) | Stateless, role-based auth for Customer vs Shopkeeper |
-| Styling | Vanilla CSS | Custom styling completely in globals.css for maximum control |
+| Styling | Tailwind CSS | Rapid UI development with utility classes |
 
 ---
 
@@ -91,7 +91,7 @@ CAMS follows a classic three-tier architecture with a clean separation between p
 
 ## 4. System Modules
 
-CAMS is divided into 8 core modules. Each module has a single responsibility (S in SOLID) and communicates through well-defined interfaces.
+CAMS is divided into 7 core modules. Each module has a single responsibility (S in SOLID) and communicates through well-defined interfaces.
 
 ### Module 1 — Auth & User Management
 
@@ -102,42 +102,37 @@ CAMS is divided into 8 core modules. Each module has a single responsibility (S 
 | Key Entities | User (abstract base), Customer, Shopkeeper |
 | Endpoints | POST /auth/register, POST /auth/login, GET /auth/me |
 | OOP Concept | Inheritance — Customer and Shopkeeper extend abstract User class |
-| Security | Passwords hashed with bcrypt; JWT verified on every protected route via `authenticate` middleware |
-| Design Pattern | Factory — `UserFactory.create(role, data)` instantiates the correct User subclass |
 
 ### Module 2 — Menu & Catalogue
 
 | Attribute | Detail |
 |-----------|--------|
-| Purpose | Shopkeeper manages menu items; customers browse, search, sort, and filter them |
-| Item Categories | Beverages, Shakes & Juices, Burgers, Sandwiches, Rolls, Momos, Maggi, Parathas, Combos, Packaged Snacks |
+| Purpose | Shopkeeper manages menu items; customers browse and filter them |
+| Item Categories | Beverages, Food, Packaged Snacks, Combos |
 | Key Entities | MenuCategory, MenuItem |
-| Endpoints | GET /menu, GET /menu/categories, POST /menu/categories, POST /menu/items, PUT /menu/items/:id, DELETE /menu/items/:id |
-| Design Pattern | Composite — `MenuCategoryComposite` contains `MenuItemLeaf` nodes, both implement `MenuComponent` interface |
-| OOP Concept | Polymorphism via `MenuComponent` interface — uniform traversal of tree structure |
-| Frontend Features | Veg/Non-veg badges, search, sort by price/rating, floating cart summary, real-time stock indicators |
+| Endpoints | GET /menu, POST /menu/items (shopkeeper), PUT /menu/items/:id, DELETE /menu/items/:id |
+| Design Pattern | Composite — MenuCategory contains MenuItems, both implement MenuComponent interface |
+| OOP Concept | Polymorphism via MenuComponent interface |
 
 ### Module 3 — Cart
 
 | Attribute | Detail |
 |-----------|--------|
 | Purpose | Customer builds an order before confirming it |
-| Behaviour | Add item, remove item, update quantity, view subtotal with bill breakdown |
+| Behaviour | Add item, remove item, update quantity, view subtotal, clear cart |
 | Key Entities | Cart, CartItem |
-| Endpoints | GET /cart, POST /cart/items, PATCH /cart/items/:cartItemId, DELETE /cart/items/:cartItemId |
-| Validation | Zod schema validation on all input (quantity must be positive integer) |
-| Stock Enforcement | Quantity capped at available stock on the order page; prevents over-ordering |
+| Endpoints | GET /cart, POST /cart/items, PUT /cart/items/:id, DELETE /cart/items/:id |
+| Design Pattern | Observer — Cart notifies when item is out of stock and removes it automatically |
 
 ### Module 4 — Order Management
 
 | Attribute | Detail |
 |-----------|--------|
-| Purpose | Core transaction — converts cart to a confirmed order using atomic database transactions |
-| Order Status Flow | PENDING → READY → PICKED_UP (forward-only transitions enforced by the backend) |
+| Purpose | Core transaction — converts cart to a confirmed order |
+| Order Status Flow | PENDING → READY → PICKED_UP |
 | Key Entities | Order, OrderItem |
-| Endpoints | POST /orders/checkout, GET /orders/history, GET /orders/all, GET /orders/:id, PATCH /orders/:id/status, GET /orders/stream (SSE) |
-| Design Pattern | Template Method — `CartCheckoutProcess` extends `OrderTemplate` with fixed steps: fetchData → validate → reserveInventory → createOrder → postOrderCleanup → triggerNotifications |
-| Concurrency Safety | Uses Prisma's `$transaction` with atomic `updateMany` (check-and-decrement) to prevent race conditions on stock |
+| Endpoints | POST /orders (customer), GET /orders/:id, GET /orders (shopkeeper), PATCH /orders/:id/status |
+| Design Pattern | Template Method — base order processing flow with fixed steps: validate → reserve stock → create order → notify |
 | Note | No payment processed. Order ID printed/shown for physical pickup reference. |
 
 ### Module 5 — Inventory
@@ -145,11 +140,10 @@ CAMS is divided into 8 core modules. Each module has a single responsibility (S 
 | Attribute | Detail |
 |-----------|--------|
 | Purpose | Track stock count per item; prevent ordering out-of-stock items |
-| Behaviour | Stock count per item, configurable low-stock threshold (default: 5), auto-hides items from menu when stock = 0, auto-restores when restocked |
+| Behaviour | Stock count per item, low-stock flag (threshold configurable), items hidden from menu when stock = 0 |
 | Key Entities | InventoryItem (linked 1:1 with MenuItem) |
-| Endpoints | GET /inventory (shopkeeper), PATCH /inventory/:itemId (shopkeeper), GET /inventory/stream (public SSE) |
-| Design Pattern | Observer — `InventoryService` implements `IStockSubject`, notifies `ShopkeeperConsoleAlertObserver` on low stock and broadcasts `STOCK_UPDATED` events via SSE |
-| Frontend Features | Inline stock editor, search by item/category name, low-stock visual warnings |
+| Endpoints | GET /inventory (shopkeeper), PATCH /inventory/:itemId |
+| Design Pattern | Observer — inventory changes trigger notification/flag for shopkeeper |
 
 ### Module 6 — Reviews & Ratings
 
@@ -158,31 +152,17 @@ CAMS is divided into 8 core modules. Each module has a single responsibility (S 
 | Purpose | Let customers rate items after pickup |
 | Constraint | Only customers with PICKED_UP orders containing that item can review it |
 | Key Entities | Review |
-| Endpoints | POST /reviews/:menuItemId, GET /reviews/:menuItemId |
+| Endpoints | POST /reviews, GET /reviews/item/:itemId |
 | OOP Concept | Encapsulation — review eligibility logic fully inside ReviewService |
-| Frontend Features | Interactive star-rating component with instant visual feedback |
 
-### Module 7 — Sales & Reports (Analytics Engine)
+### Module 7 — Sales & Reports
 
 | Attribute | Detail |
 |-----------|--------|
 | Purpose | Give shopkeeper analytics on orders and revenue |
-| Report Types | Sales Analytics (total revenue, completed orders), Inventory Valuation (capital tied in stock, critical items), Top Ordered Items (top 10 by quantity sold) |
-| Endpoints | GET /reports?type=sales, GET /reports?type=inventory, GET /reports?type=top-items |
-| Design Pattern | Strategy — `ReportContext` executes whichever `IReportStrategy` is selected: `SalesReportStrategy`, `InventoryReportStrategy`, or `TopItemsStrategy` |
-| Frontend Features | Revenue cards, top items table, inventory valuation card with critical item counts |
-
-### Module 8 — Real-time Notification System
-
-| Attribute | Detail |
-|-----------|--------|
-| Purpose | Push live updates to the Shopkeeper Dashboard and Customer Menu without page refresh |
-| Technology | Server-Sent Events (SSE) — persistent one-way HTTP connections |
-| Event Types | `ORDER_PLACED` (new order alert), `STATUS_CHANGED` (order status update), `STOCK_UPDATED` (inventory change) |
-| Design Pattern | Observer — `OrderEventEmitter` (Subject/Singleton) broadcasts to `DashboardUpdater` (Shopkeeper SSE) and `PublicInventoryUpdater` (Customer SSE) |
-| Design Pattern | Adapter — `INotificationService` interface with `InAppNotificationAdapter` and `EmailAdapter` (extensible) |
-| Frontend Features | Bell icon with notification badge, dropdown panel with timestamped alerts, audio "ding" on new orders |
-| Security | `PublicInventoryUpdater` filters events to only send `STOCK_UPDATED` — prevents leaking order data to customers |
+| Features | Total orders today/week, revenue totals, most ordered items, pending vs completed count |
+| Endpoints | GET /reports/summary, GET /reports/top-items |
+| Design Pattern | Strategy — different report generation strategies (daily, weekly, item-wise) via ReportStrategy interface |
 
 ---
 
@@ -251,40 +231,19 @@ enum OrderStatus { PENDING, READY, PICKED_UP }
 
 All 7 required patterns are applied with genuine justification — each pattern solves a real problem in CAMS, not artificially forced. Several patterns are reused across multiple modules where the same problem recurs naturally.
 
-### 6.0 Design Pattern Summary (Quick Reference)
+### 6.0 Design Pattern Reuse Map
 
-| # | Pattern | File | Problem Solved | SOLID Link |
-|---|---------|------|----------------|------------|
-| 1 | Singleton | `src/config/DatabaseConnection.ts` | One shared DB connection; prevents resource exhaustion | SRP — single point of DB access |
-| 2 | Factory | `src/patterns/UserFactory.ts` | Role-based user creation (Customer vs Shopkeeper) | OCP — new roles extend, don't modify |
-| 3 | Adapter | `src/patterns/NotificationAdapter.ts` | Pluggable notification channels (In-App, Email) | DIP — services depend on interface, not concrete class |
-| 4 | Composite | `src/patterns/MenuComposite.ts` | Uniform traversal of menu categories and items | LSP — both leaf and composite satisfy MenuComponent |
-| 5 | Observer | `src/patterns/OrderObserver.ts` | Real-time SSE push to dashboards + low-stock alerts | OCP — new observers added without modifying Subject |
-| 6 | Strategy | `src/patterns/ReportStrategy.ts` | Swappable report algorithms (Sales, Inventory, TopItems) | OCP — new report = new class, no existing code modified |
-| 7 | Template Method | `src/patterns/OrderTemplate.ts` | Fixed 6-step checkout pipeline (fetch → validate → reserve → create → cleanup → notify) | SRP — each step is an isolated abstract hook |
+The same pattern can appear in multiple modules when it solves the same type of problem. Below is the complete map of every pattern usage across CAMS.
 
-### 6.1 Pattern Reuse & Advanced Implementation
-
-While we implement all 7 core patterns, we specifically demonstrate "Expert Level" understanding by reusing several patterns across multiple modules to solve recurring architectural problems.
-
-#### 1. Observer Pattern (Multi-Stream Events)
-- **Implementation A (Order Pipeline)**: `OrderEventEmitter` acts as a Subject. When an order is placed or updated, it notifies the `DashboardUpdater` (SSE push to shopkeeper) and `CustomerNotifier`.
-- **Implementation B (Inventory Safety)**: The `InventoryService` acts as a second, independent Subject. It monitors stock levels and notifies `LowStockObservers` (triggering dashboard alerts) when items hit critical thresholds.
-- **Justification**: This decouples our "Business Logic" from our "Communication Logic". Neither the Order nor the Inventory system needs to know how a notification is delivered.
-
-#### 2. Singleton Pattern (Resource Management)
-- **Implementation A (External Resources)**: `DatabaseConnection` ensures only one Prisma Client exists. This prevents "Too many connections" errors in production.
-- **Implementation B (Internal State)**: All Service classes (`CartService`, `AuthService`, etc.) are exported as singletons.
-- **Justification**: Since these services manage shared state (like the lists of Observers or SSE clients), we MUST ensure only one instance exists. If we had two `OrderService` instances, an observer registered on one would never hear events from the other.
-
-#### 3. Adapter Pattern (Pluggable Channels)
-- **Implementation A (In-App)**: The `InAppNotificationAdapter` handles standard dashboard alerts.
-- **Implementation B (Extensibility)**: We include an `EmailAdapter` placeholder that implements the same `INotificationService` interface.
-- **Justification**: Demonstrates the system is "Production Ready". A business can swap between Email, SMS, or WhatsApp notifications by simply creating a new adapter class without touching the core `OrderService` code.
-
-#### 4. Strategy Pattern (Pluggable Algorithms)
-- **Implementation A (Analytical Reports)**: Three distinct strategies (`Sales`, `Inventory`, `TopItems`) for the analytics engine.
-- **Justification**: Instead of a giant `switch` statement that grows every time we add a report, we encapsulate each report's calculation logic into its own class. This perfectly follows the **Open/Closed Principle**.
+| Pattern | Primary Usage | Additional Reuse | Justification for Reuse |
+|---------|--------------|-------------------|------------------------|
+| Singleton | DatabaseConnection (Prisma Client) | ConfigManager (env vars + app settings) | App config should also be loaded once and shared — same problem as DB connection |
+| Factory | UserFactory (Customer / Shopkeeper) | — | Single usage; only one polymorphic creation point |
+| Adapter | InAppNotificationAdapter | EmailAdapter (same interface, different channel) | Multiple notification channels = multiple adapters. The whole point of Adapter is swappability |
+| Composite | MenuCategory + MenuItem (MenuComponent) | — | Single usage; only the menu has a tree structure |
+| Observer | OrderEventEmitter → CustomerNotifier, InventoryUpdater | InventoryEventEmitter → LowStockNotifier (alerts shopkeeper when stock < threshold) | Inventory stock changes are a separate event stream from order events — decouples stock alerts from order processing |
+| Strategy | ReportStrategy (Daily, Weekly, TopItems) | MenuSortStrategy (sort menu by price, by name, by popularity) | Customer-facing menu needs sortable views — same swap-algorithm-at-runtime problem |
+| Template Method | OrderProcessor (validate → reserve → create → notify) | — | Single usage; only order processing has a fixed-step pipeline |
 
 ### Pattern 1 — Singleton
 
@@ -367,29 +326,16 @@ class MenuCategory implements MenuComponent {
 
 | Attribute | Detail |
 |-----------|--------|
-| Problem Solved | When order status changes, the shopkeeper dashboard should update in real-time; when stock hits threshold, alerts should fire |
-| Implementation | `OrderEventEmitter` (Singleton Subject) + `DashboardUpdater`, `PublicInventoryUpdater` (Observers) + `IStockSubject` / `IStockObserver` for inventory |
+| Problem Solved | When order status changes, the customer should be notified; when stock hits 0, menu should update |
+| Implementation | OrderEventEmitter (subject) + CustomerNotifier, InventoryUpdater (observers) |
 | File | `src/patterns/OrderObserver.ts` |
-| Why here | Decouples order/inventory logic from notification/UI update logic — OrderService doesn't know about SSE, Dashboard, or Audio alerts |
+| Why here | Decouples order logic from notification/inventory update logic — OrderService doesn't need to know about either |
 
 ```typescript
-// Subject (Singleton)
+interface IObserver { update(event: OrderEvent): void }
 class OrderEventEmitter {
-  private static instance: OrderEventEmitter;
-  private observers: IOrderObserver[] = [];
-  static getInstance() { if (!this.instance) this.instance = new OrderEventEmitter(); return this.instance; }
-  notify(event: OrderEvent) { this.observers.forEach(o => o.onOrderUpdate(event)); }
-}
-
-// Observer A: Pushes to Shopkeeper Dashboard via SSE
-class DashboardUpdater implements IOrderObserver {
-  private clients: Response[] = [];
-  onOrderUpdate(event) { this.clients.forEach(c => c.write(`data: ${JSON.stringify(event)}\n\n`)); }
-}
-
-// Observer B: Pushes stock changes to Customer Menu via SSE (filters to STOCK_UPDATED only)
-class PublicInventoryUpdater implements IOrderObserver {
-  onOrderUpdate(event) { if (event.type === 'STOCK_UPDATED') { /* push to clients */ } }
+  private observers: IObserver[];
+  notify(event) { this.observers.forEach(o => o.update(event)); }
 }
 ```
 
@@ -397,28 +343,15 @@ class PublicInventoryUpdater implements IOrderObserver {
 
 | Attribute | Detail |
 |-----------|--------|
-| Problem Solved | Reports can be generated in different ways — sales summary, inventory valuation, top items — all with same interface |
-| Implementation | `IReportStrategy` interface + `SalesReportStrategy`, `InventoryReportStrategy`, `TopItemsStrategy` + `ReportContext` (context class) |
+| Problem Solved | Reports can be generated in different ways — daily summary, weekly, by item — all with same interface |
+| Implementation | IReportStrategy interface + DailyReportStrategy, WeeklyReportStrategy, TopItemsStrategy |
 | File | `src/patterns/ReportStrategy.ts` |
-| Why here | Shopkeeper selects report type via query parameter; ReportController picks the correct strategy and executes it without any if/else logic |
+| Why here | Shopkeeper may want different report views — Strategy lets us swap algorithms without changing ReportService |
 
 ```typescript
-interface IReportStrategy { generateReport(): Promise<any> }
-
-class SalesReportStrategy implements IReportStrategy {
-  async generateReport() { /* queries PICKED_UP orders, calculates revenue & breakdown */ }
-}
-class InventoryReportStrategy implements IReportStrategy {
-  async generateReport() { /* calculates capital value, identifies critical low-stock items */ }
-}
-class TopItemsStrategy implements IReportStrategy {
-  async generateReport() { /* ranks items by total quantity sold, returns top 10 */ }
-}
-
-// Context: Controller selects strategy at runtime
-class ReportContext {
-  constructor(private strategy: IReportStrategy) {}
-  async executeStrategy() { return await this.strategy.generateReport(); }
+interface IReportStrategy { generate(data: OrderData[]): Report }
+class DailyReportStrategy implements IReportStrategy {
+  generate(data) { /* filter today's orders */ }
 }
 ```
 
@@ -427,44 +360,20 @@ class ReportContext {
 | Attribute | Detail |
 |-----------|--------|
 | Problem Solved | Order processing always follows the same sequence of steps, but individual steps may differ |
-| Implementation | `OrderTemplate` (abstract base) with sealed `processOrder()` template method + 6 abstract hook methods; `CartCheckoutProcess` (concrete class) |
-| File | `src/patterns/OrderTemplate.ts` (abstract), `src/services/OrderService.ts` (concrete) |
-| Why here | Enforces consistent order flow while allowing extension for future order types (e.g., pre-order, bulk order) |
+| Implementation | Abstract OrderProcessor class with processOrder() template method + abstract hook methods |
+| File | `src/patterns/OrderTemplate.ts` |
+| Why here | Enforces consistent order flow (validate → check stock → create → notify) while allowing extension for future order types |
 
 ```typescript
-// Abstract Template — defines the skeleton algorithm
-abstract class OrderTemplate {
-  // THE TEMPLATE METHOD — sealed, cannot be overridden
-  async processOrder(customerId: string) {
-    const rawData = await this.fetchData(customerId);    // Step 1: Load cart
-    this.validate(rawData);                               // Step 2: Validate items
-    const result = await this.prisma.$transaction(async (tx) => {
-      await this.reserveInventory(tx, rawData);           // Step 3: Atomic stock decrement
-      const order = await this.createOrderRecord(tx, customerId, rawData); // Step 4: Persist order
-      await this.postOrderCleanup(tx, rawData);           // Step 5: Clear cart
-      return order;
-    });
-    await this.triggerNotifications(result);               // Step 6: SSE + Adapter notifications
-    return result;
+abstract class OrderProcessor {
+  processOrder() {
+    this.validate();
+    this.reserveStock();
+    this.createOrder();
+    this.notify();
   }
-  protected abstract fetchData(customerId: string): Promise<any>;
-  protected abstract validate(data: any): void;
-  protected abstract reserveInventory(tx: any, data: any): Promise<void>;
-  protected abstract createOrderRecord(tx: any, customerId: string, data: any): Promise<any>;
-  protected abstract postOrderCleanup(tx: any, data: any): Promise<void>;
-  protected abstract triggerNotifications(orderData: any): Promise<void>;
-}
-
-// Concrete Implementation
-class CartCheckoutProcess extends OrderTemplate {
-  protected async reserveInventory(tx, cart) {
-    // Atomic check-and-decrement — prevents race conditions
-    const result = await tx.inventoryItem.updateMany({
-      where: { menuItemId: item.menuItemId, stockCount: { gte: item.quantity } },
-      data: { stockCount: { decrement: item.quantity } }
-    });
-    if (result.count === 0) throw new StockError('Stock mismatch — item just sold out.');
-  }
+  abstract validate(): void;
+  abstract notify(): void;
 }
 ```
 
@@ -581,60 +490,31 @@ Each SOLID principle is demonstrated in at least two concrete locations across C
 
 ## 9. API Endpoint Reference
 
-### Auth Module
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| POST | /auth/register | Public | Register as customer or shopkeeper |
-| POST | /auth/login | Public | Login and receive JWT token |
-| GET | /auth/me | Any authenticated | Get current user profile |
-
-### Menu Module
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| GET | /menu | Public | Get full menu with categories and items |
-| GET | /menu/categories | Public | Get all menu categories |
-| POST | /menu/categories | Shopkeeper | Create a new category |
-| POST | /menu/items | Shopkeeper | Add a new menu item to a category |
-| PUT | /menu/items/:id | Shopkeeper | Update a menu item |
-| DELETE | /menu/items/:id | Shopkeeper | Remove a menu item |
-
-### Cart Module
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| GET | /cart | Customer | View current cart |
-| POST | /cart/items | Customer | Add item to cart |
-| PATCH | /cart/items/:cartItemId | Customer | Update cart item quantity |
-| DELETE | /cart/items/:cartItemId | Customer | Remove item from cart |
-
-### Order Module
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| POST | /orders/checkout | Customer | Place order from cart (Template Method) |
-| GET | /orders/history | Customer | View own order history |
-| GET | /orders/:id | Customer / Shopkeeper | View single order details |
-| GET | /orders/all | Shopkeeper | View all orders |
-| PATCH | /orders/:id/status | Shopkeeper | Update order status (forward-only) |
-| GET | /orders/stream | Shopkeeper | SSE stream for live dashboard updates |
-
-### Inventory Module
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| GET | /inventory | Shopkeeper | View inventory status of all items |
-| PATCH | /inventory/:itemId | Shopkeeper | Update stock count for an item |
-| GET | /inventory/stream | Public | SSE stream for live stock updates to customers |
-
-### Reviews Module
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| GET | /reviews/:menuItemId | Public | Get all reviews for a menu item |
-| POST | /reviews/:menuItemId | Customer | Submit a review (must have a PICKED_UP order) |
-
-### Reports Module (Strategy Pattern)
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| GET | /reports?type=sales | Shopkeeper | Sales analytics (revenue, order count, item breakdown) |
-| GET | /reports?type=inventory | Shopkeeper | Inventory valuation (capital value, critical items) |
-| GET | /reports?type=top-items | Shopkeeper | Top 10 most ordered items |
+| Method + Endpoint | Auth Role | Description |
+|-------------------|-----------|-------------|
+| POST /auth/register | Public | Register as customer or shopkeeper |
+| POST /auth/login | Public | Login and receive JWT |
+| GET /auth/me | Any | Get current user profile |
+| GET /menu | Public | Get full menu with categories and items |
+| GET /menu/categories | Public | Get all menu categories |
+| POST /menu/items | Shopkeeper | Add a new menu item |
+| PUT /menu/items/:id | Shopkeeper | Update a menu item |
+| DELETE /menu/items/:id | Shopkeeper | Remove a menu item |
+| GET /cart | Customer | View current cart |
+| POST /cart/items | Customer | Add item to cart |
+| PUT /cart/items/:id | Customer | Update cart item quantity |
+| DELETE /cart/items/:id | Customer | Remove item from cart |
+| POST /orders | Customer | Place order from cart |
+| GET /orders | Shopkeeper | View all orders (filterable by status) |
+| GET /orders/my | Customer | View own order history |
+| GET /orders/:id | Customer / Shopkeeper | View single order details |
+| PATCH /orders/:id/status | Shopkeeper | Update order status |
+| GET /inventory | Shopkeeper | View inventory status of all items |
+| PATCH /inventory/:itemId | Shopkeeper | Update stock count for an item |
+| POST /reviews | Customer | Submit a review for a purchased item |
+| GET /reviews/item/:itemId | Public | Get all reviews for a menu item |
+| GET /reports/summary | Shopkeeper | Get sales summary (daily/weekly) |
+| GET /reports/top-items | Shopkeeper | Get most ordered items |
 
 ---
 
@@ -681,7 +561,7 @@ CAMS follows the Agile-inspired iterative SDLC model, structured into 4 phases a
 Copy this into your repository README.md:
 
 ```markdown
-# CAMS — Chai Adda Management System
+# ☕ CAMS — Chai Adda Management System
 
 > A digital ordering and management system for Chai Adda,
 > our college campus shop — built for the System Design &
@@ -690,46 +570,24 @@ Copy this into your repository README.md:
 ---
 
 ## Project Overview
-CAMS is a two-panel web application that digitizes the ordering workflow at Chai Adda. Customers browse the menu, place orders, and track status digitally. The shopkeeper manages menu items, inventory, and processes orders through a dedicated admin panel.
-
-### 🚀 Key Features
-
-#### 👤 Customer Panel (Zomato/Swiggy Style)
-- **Smart Menu**: Categorized browsing with search, price/rating sorting, and real-time stock indicators.
-- **Order Tracking**: Visual status timeline (Placed → Preparing → Ready → Picked Up).
-- **Review System**: Rate and review items with instant UI updates.
-
-#### 🏪 Shopkeeper Panel (Admin Dashboard)
-- **Live Order Stream**: Real-time order arrivals via SSE with **Audio Alerts**.
-- **Analytics & Reports**: Sales summaries and inventory valuation reports (Strategy Pattern).
+CAMS is a two-panel web application that digitizes the
+ordering workflow at Chai Adda. Customers browse the menu,
+place orders, and track status digitally. The shopkeeper
+manages menu items, inventory, and processes orders through
+a dedicated admin panel. Orders are paid and picked up
+physically at the shop — CAMS handles everything before
+and after that moment.
 
 ---
 
 ## Tech Stack
 | Layer        | Technology                        |
 |--------------|-----------------------------------|
-| Frontend     | Next.js (React) + Vanilla CSS     |
+| Frontend     | Next.js (React) + Tailwind CSS    |
 | Backend API  | Express.js + Node.js + TypeScript |
 | ORM          | Prisma                            |
 | Database     | PostgreSQL                        |
 | Auth         | JWT (role-based)                  |
-
-## Design Patterns Used (7/7)
-| #  | Pattern         | Location                            | Problem Solved                    |
-|----|-----------------|-------------------------------------|-----------------------------------|
-| 1  | Singleton       | `DatabaseConnection`, `Service Classes` | Shared state & resource efficiency |
-| 2  | Factory         | `UserFactory`                       | Role-based object creation        |
-| 3  | Adapter         | `NotificationAdapter` (In-App/Email)| Pluggable channel support         |
-| 4  | Composite       | `MenuComposite` (Category/Item)     | Uniform tree traversal            |
-| 5  | Observer        | `OrderObserver`, `InventoryService` | SSE Updates & Low-stock alerts    |
-| 6  | Strategy        | `ReportStrategy` (Sales/Inventory)  | Swappable analytics algorithms    |
-| 7  | Template Method | `OrderTemplate` (Checkout workflow) | Fixed-step transactional logic    |
-
-### 🧩 Advanced Pattern Highlights
-- **Observer Pattern**: Implemented as a multi-stream event system. It manages both real-time order dashboard pushes (SSE) and critical low-stock inventory alerts independently.
-- **Strategy Pattern**: Powers the Analytics Engine. It encapsulates complex report generation algorithms into interchangeable strategies.
-- **Template Method**: Enforces a rigid 5-step transactional pipeline ensuring data integrity.
-```
 
 ---
 
@@ -814,12 +672,7 @@ Register as Shopkeeper to access the admin panel.
 ---
 
 ## Team
-- Aditya Samadhiya
-- Anant Pratap Singh
-- Abhishek Tripathi
-- Yash Raj
-- Yash Yadav
-- Rohan Choudhary
+[Your Name] — Solo Project
 ```
 
 ---
@@ -1502,7 +1355,7 @@ router.post('/menu/items', authenticate, requireShopkeeper, menuController.addIt
 |-----------|--------|
 | Severity | High — demo looks empty and unprofessional |
 | Description | Demonstrating an empty system to an evaluator is a missed opportunity. A live demo with realistic Chai Adda menu items, a few placed orders, and varied stock levels takes 10 minutes to build and makes the entire project look production-ready. |
-| Fix | Create `prisma/seed.ts` with: 10 menu categories, 50+ realistic menu items matching the actual Chai Adda menu, 1 shopkeeper account, 2 customer accounts, a few orders in different statuses (PENDING, READY, PICKED_UP), some reviews. |
+| Fix | Create `prisma/seed.ts` with: 2–3 menu categories, 8–10 realistic menu items with prices matching the actual Chai Adda menu, 1 shopkeeper account, 2–3 customer accounts, a few orders in different statuses (PENDING, READY, PICKED_UP), some reviews. |
 | File | `prisma/seed.ts` |
 
 ### 17.3 Medium Risks (fix during Sprint 3–4)
@@ -1584,11 +1437,12 @@ These improvements go beyond the minimum submission requirements. They strengthe
 | Install | `npm install swagger-ui-express swagger-jsdoc @types/swagger-ui-express` |
 | File | `src/config/swagger.ts` |
 
-#### IMP-03 — Enum-driven Order Status with Forward-only Transition Logic
+#### IMP-03 — Enum-driven Order Status with State Machine Logic
+
 | Attribute | Detail |
 |-----------|--------|
 | What | Enforce valid order status transitions — PENDING can only go to READY, READY can only go to PICKED_UP. Reverse transitions should be rejected. |
-| Why | Currently nothing stops a shopkeeper from marking a PICKED_UP order back to PENDING. Adding transition validation shows robust business logic. |
+| Why | Currently nothing stops a shopkeeper from marking a PICKED_UP order back to PENDING. Adding transition validation shows State Machine understanding. |
 | File | `src/services/OrderService.ts` — updateStatus() method |
 
 ```typescript
@@ -1675,48 +1529,3 @@ class StockError extends AppError { statusCode = 409; }
 | Add request logging | Use morgan middleware for HTTP request logging in development. `npm install morgan @types/morgan` — two lines of code. | Helps debug issues during live demo. |
 | Git commit hygiene | Use conventional commits: feat:, fix:, refactor:, docs:. Since individual commits are verified by faculty, message quality matters. | Each commit tells a story of structured development — directly evaluated by faculty. |
 | DTOs with TypeScript interfaces | Create `src/models/dtos.ts` with typed request/response interfaces for every endpoint. | Shows Abstraction (OOP) and type safety. Controllers and services communicate through well-defined contracts. |
-
----
-
-## 19. Final Implementation Summary (Production Ready)
-
-The final implementation of CAMS exceeds the basic academic requirements by incorporating professional-grade features and UX polish typical of modern food-delivery applications (Zomato, Swiggy, Blinkit).
-
-### 19.1 Polished UX Enhancements
-- **Real-time Synchronization**: Implemented using **Server-Sent Events (SSE)** — a persistent one-way HTTP connection. We chose SSE over WebSockets because our notifications are unidirectional (server → client), SSE handles automatic reconnection natively, and it is more resource-efficient for our use case.
-- **Audio Notification System**: Integrated a non-intrusive audio alert (Base64-encoded WAV) for the shopkeeper dashboard to ensure zero-latency order processing even when the shopkeeper is not actively watching the screen.
-- **Search & Pagination**: Every high-volume view (Orders, Inventory, Order History) features optimized search and "Load More" pagination to ensure high performance with large datasets.
-- **Interactive Ratings**: A custom-built star-rating system that provides immediate visual feedback and triggers automatic average rating recalculation on the menu.
-- **Smart Menu Display**: Categorized browsing with veg/non-veg badges, search by name, sort by price/rating, and floating cart summary — inspired by Zomato and Swiggy UX patterns.
-- **Visual Order Tracking**: Customers see a visual status timeline (Placed → Preparing → Ready → Picked Up) for each order.
-
-### 19.2 System Robustness
-- **Atomic Transactions**: Inventory reservation uses Prisma's `$transaction` with atomic `updateMany` (check-and-decrement pattern). If two customers try to order the last item simultaneously, only one succeeds — the other receives a clear `StockError`.
-- **Graceful Error Handling**: Custom-built error hierarchy (`AppError` → `ValidationError`, `AuthError`, `ForbiddenError`, `NotFoundError`, `ConflictError`, `StockError`) with automatic HTTP status code mapping. Users receive clear, helpful feedback instead of generic crash reports.
-- **Forward-only Order Transitions**: Backend enforces PENDING → READY → PICKED_UP. Backward transitions are rejected, preventing data corruption.
-- **Auto-availability Management**: When stock hits 0, the item is automatically hidden from the customer menu. When restocked, it automatically reappears.
-- **Zod Input Validation**: All API inputs are validated using Zod schemas before reaching business logic, preventing malformed data from entering the system.
-- **Realistic Data Seeding**: The system is pre-populated with **53 menu items** across 10 categories, matching the actual Chai Adda menu to provide a production-like demo experience.
-
-### 19.3 Notification Architecture (Observer + Adapter + SSE)
-
-The notification system combines two design patterns with SSE technology:
-
-| Layer | Component | Pattern | Purpose |
-|-------|-----------|---------|--------|
-| Event Bus | `OrderEventEmitter` (Singleton) | Observer (Subject) | Central hub that receives all system events |
-| Shopkeeper Push | `DashboardUpdater` | Observer (Observer) | Pushes order events to connected Shopkeeper dashboards via SSE |
-| Customer Push | `PublicInventoryUpdater` | Observer (Observer) | Pushes stock updates to customer menus via SSE (filters out order data for security) |
-| Channel Abstraction | `INotificationService` | Adapter (Interface) | Defines a pluggable `.send()` contract |
-| In-App Channel | `InAppNotificationAdapter` | Adapter (Concrete) | Default notification delivery channel |
-| Email Channel | `EmailAdapter` | Adapter (Concrete) | Extensible placeholder for production email integration |
-| Frontend | Bell icon + Audio alert + Toast | — | Visual badge, dropdown panel, audio "ding", and toast popup on new orders |
-
-### 19.4 Academic Adherence
-- **7/7 Design Patterns** implemented and verified in production code.
-- **SOLID Principles** strictly followed across the service-oriented architecture.
-- **Full Type Safety** achieved using TypeScript across the entire 3-tier stack.
-- **4 OOP Concepts** demonstrated: Abstraction (User base class), Encapsulation (private passwordHash), Inheritance (Customer/Shopkeeper), Polymorphism (MenuComponent, getPermissions()).
-- **Custom Error Hierarchy** demonstrates Inheritance and Polymorphism in error handling.
-- **4 UML Diagrams** provided: Class Diagram, Use Case Diagram, Sequence Diagram (checkout workflow), ER Diagram.
-
